@@ -254,10 +254,19 @@ typedef list_node_t *list;
 
 void find_without_at(node_t *x, char c, int pos, list *toDelete) {
     if (x->word[pos] != c) {
-        list_node_t *temp = *toDelete;
-        *toDelete = malloc(sizeof(list_node_t));
-        (*toDelete)->next = temp;
-        (*toDelete)->ptr = x;
+        list_node_t *index = *toDelete;
+        char found = 0;
+        while (index) {
+            if (index->ptr == x)
+                found = 1;
+            index = index->next;
+        }
+        if (!found) {
+            list_node_t *temp = *toDelete;
+            *toDelete = malloc(sizeof(list_node_t));
+            (*toDelete)->next = temp;
+            (*toDelete)->ptr = x;
+        }
     }
     if (x->left)find_without_at(x->left, c, pos, toDelete);
     if (x->right)find_without_at(x->right, c, pos, toDelete);
@@ -265,14 +274,50 @@ void find_without_at(node_t *x, char c, int pos, list *toDelete) {
 
 void find_with(node_t *x, char c, list *toDelete) {
     if (strchr(x->word, c)) {
-        list_node_t *temp = *toDelete;
-        *toDelete = malloc(sizeof(list_node_t));
-        (*toDelete)->next = temp;
-        (*toDelete)->ptr = x;
+        list_node_t *index = *toDelete;
+        char found = 0;
+        while (index) {
+            if (index->ptr == x)
+                found = 1;
+            index = index->next;
+        }
+        if (!found) {
+            list_node_t *temp = *toDelete;
+            *toDelete = malloc(sizeof(list_node_t));
+            (*toDelete)->next = temp;
+            (*toDelete)->ptr = x;
+        }
     }
     if (x->left)find_with(x->left, c, toDelete);
     if (x->right)find_with(x->right, c, toDelete);
 }
+
+void find_with_min_occ(node_t *x, char c, int min, int k, list *toDelete) {
+    for (int i = 0; i < k; i++) {
+        if (x->word[i] == c)
+            min--;
+    }
+    if (min > 0) {
+
+        list_node_t *index = *toDelete;
+        char found = 0;
+        while (index) {
+            if (index->ptr == x)
+                found = 1;
+            index = index->next;
+        }
+        if (!found) {
+            printf("Adding %s", x->word);
+            list_node_t *temp = *toDelete;
+            *toDelete = malloc(sizeof(list_node_t));
+            (*toDelete)->next = temp;
+            (*toDelete)->ptr = x;
+        }
+    }
+    if (x->left)find_with_min_occ(x->left, c, min, k, toDelete);
+    if (x->right)find_with_min_occ(x->right, c, min, k, toDelete);
+}
+
 
 void free_list(list l) {
     list_node_t *temp;
@@ -328,6 +373,33 @@ char dehash(int i) {
     return -1;
 }
 
+void apply_filters(RB_tree *filtered_tree, int k, const char *in_at, const char not_in[ALPHABET_LENGTH],
+                   const char min_occ[ALPHABET_LENGTH]) {
+    if (!*filtered_tree) {
+        printf("filtered_tree null!!!");
+        return;
+    }
+
+    list toDelete = NULL;
+    for (int i = 0; i < k; i++) {
+        if (in_at[i] >= 0) {
+            char c = in_at[i];
+            find_without_at(*filtered_tree, c, i, &toDelete);
+        }
+    }
+    for (int i = 0; i < ALPHABET_LENGTH; i++) {
+        if (not_in[i]) {
+            char c = dehash(i);
+            find_with(*filtered_tree, c, &toDelete);
+        }
+        if (min_occ[i] > 0) {
+            char c = dehash(i);
+            find_with_min_occ(*filtered_tree, c, min_occ[i], k, &toDelete);
+        }
+    }
+    delete_in(filtered_tree, &toDelete);
+}
+
 void apply_filter_in_at(RB_tree *filtered_tree, const char *in_at, int k) {
     list toDelete = NULL;
     for (int i = 0; i < k; i++) {
@@ -350,9 +422,21 @@ void apply_filter_not_in(RB_tree *filtered_tree, const char not_in[ALPHABET_LENG
     }
 }
 
+void apply_filter_min_occ(RB_tree *filtered_tree, const char min_occ[ALPHABET_LENGTH], int k) {
+    list toDelete = NULL;
+    for (int i = 0; i < ALPHABET_LENGTH; i++) {
+        if (min_occ[i] > 0) {
+            char c = dehash(i);
+            find_with_min_occ(*filtered_tree, c, min_occ[i], k, &toDelete);
+            delete_in(filtered_tree, &toDelete);
+        }
+    }
+}
+
 void nuova_partita(RB_tree *dictionary, int k) {
     char ref_word[k];
     char not_in[ALPHABET_LENGTH] = {0};
+    char min_occ[ALPHABET_LENGTH] = {0};
     char in_at[k];
     for (int i = 0; i < k; i++) in_at[i] = -1;
 
@@ -386,18 +470,22 @@ void nuova_partita(RB_tree *dictionary, int k) {
                             toDelete = (toDelete)->next;
                         }*/
                         //delete_in(&filtered_tree, &toDelete);
+                        min_occ[hash(input[j])]++;
                     }
                 }
-                apply_filter_in_at(&filtered_tree, in_at, k);
+                //apply_filter_in_at(&filtered_tree, in_at, k);
 
                 for (int j = 0; j < k; j++) {
                     if (res[j] != '+') {
                         int found = 0;
+
                         for (int i = 0; i < k; i++) {
                             if (ref_word[i] == input[j] && used[i] != 1) {
                                 res[j] = '|';
+
                                 used[i] = 1;
                                 found = 1;
+                                min_occ[hash(input[j])]++;
                             }
                         }
                         if (!found) {
@@ -408,7 +496,9 @@ void nuova_partita(RB_tree *dictionary, int k) {
                         }
                     }
                 }
-                apply_filter_not_in(&filtered_tree, not_in);
+                //apply_filter_not_in(&filtered_tree, not_in);
+                //apply_filter_min_occ(&filtered_tree, min_occ,k);
+                apply_filters(&filtered_tree, k, in_at, not_in, min_occ);
 
                 for (int j = 0; j < k; j++) {
                     printf("%c", res[j]);
