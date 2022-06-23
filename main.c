@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <malloc.h>
 #include <stdlib.h>
 
 #define RED 0
@@ -219,7 +218,7 @@ node_t *delete(RB_tree *T, node_t *z) {
     if (y->left != NULL)
         x = y->left;
     else x = y->right;
-    x->parent = y->parent; // x potrebbe essere T.nil;
+    if (x) x->parent = y->parent; // x potrebbe essere T.nil;
     if (y->parent == NULL)
         *T = x;
     else if (y == y->parent->left)
@@ -227,7 +226,7 @@ node_t *delete(RB_tree *T, node_t *z) {
     else y->parent->right = x;
     if (y != z)
         z->word = y->word;
-    if (y->color == BLACK)
+    if (y->color == BLACK && x)
         delete_fixup(T, x);
     return y;
 }
@@ -246,47 +245,89 @@ node_t *copy(const node_t *x, node_t *p, int k) {
     return NULL;
 }
 
+typedef struct list_node {
+    node_t *ptr;
+    struct list_node *next;
+} list_node_t;
+typedef list_node_t *list;
+
+void find_without(node_t *x, char c, int pos, list *toDelete) {
+    if (x->word[pos] != c) {
+        list_node_t *temp = *toDelete;
+        *toDelete = malloc(sizeof(list_node_t));
+        (*toDelete)->next = temp;
+        (*toDelete)->ptr = x;
+    }
+    if (x->left)find_without(x->left, c, pos, toDelete);
+    if (x->right)find_without(x->right, c, pos, toDelete);
+}
+
+void deleteIf(RB_tree *tree, node_t *x, char c, int pos) {
+    if (x->word[pos] == c)
+        delete(tree, x);
+    if (x->left)deleteIf(tree, x->left, c, pos);
+    if (x->right)deleteIf(tree, x->right, c, pos);
+}
+
 void nuova_partita(const RB_tree *tree, int k) {
     char ref_word[k];
     if (!scanf("%s", ref_word)) return;
     int n;
     if (!scanf("%d", &n)) return;
     RB_tree filtered_tree = copy(*tree, NULL, k);
-    printTree(filtered_tree);
+    //printTree(filtered_tree);
     while (n > 0) {
-        char word[k];
-        if (scanf("%s", word) < 0)break;
-        if (search(*tree, word)) {
-            char res[k];
-            char used[k];
-            for (int j = 0; j < k; j++) {
-                if (ref_word[j] == word[j]) {
-                    res[j] = '+';
-                    used[j] = 1;
-                }
-            }
-
-            for (int j = 0; j < k; j++) {
-                if (res[j] != '+') {
-                    int found = 0;
-                    for (int i = 0; i < k; i++) {
-                        if (ref_word[i] == word[j] && used[i] != 1) {
-                            res[j] = '|';
-                            used[i] = 1;
-                            found = 1;
-                        }
+        char input[256];
+        if (scanf("%s", input) < 0)break;
+        if (strcmp(input, "+stampa_filtrate") == 0)
+            printTree(filtered_tree);
+        else if (strlen(input) == k) {
+            if (search(*tree, input)) {
+                char res[k];
+                char used[k];
+                list toDelete = NULL;
+                for (int j = 0; j < k; j++) {
+                    if (ref_word[j] == input[j]) {
+                        res[j] = '+';
+                        used[j] = 1;
+                        find_without(filtered_tree, input[j], j, &toDelete);
+                        /*printf("To delete:\n");
+                        while (toDelete) {
+                            printf("\n%s", (toDelete)->ptr->word);
+                            toDelete = (toDelete)->next;
+                        }*/
                     }
-                    if (!found)
-                        res[j] = '/';
                 }
+
+                for (int j = 0; j < k; j++) {
+                    if (res[j] != '+') {
+                        int found = 0;
+                        for (int i = 0; i < k; i++) {
+                            if (ref_word[i] == input[j] && used[i] != 1) {
+                                res[j] = '|';
+                                used[i] = 1;
+                                found = 1;
+                            }
+                        }
+                        if (!found)
+                            res[j] = '/';
+                    }
+                }
+
+                list_node_t *index = toDelete;
+                while (index) {
+                    delete(&filtered_tree, index->ptr);
+                    index = index->next;
+                }
+
+                for (int j = 0; j < k; j++) {
+                    printf("%c", res[j]);
+                }
+                printf("\n");
+                n--;
+            } else {
+                printf("not_exist\n");
             }
-            for (int j = 0; j < k; j++) {
-                printf("%c", res[j]);
-            }
-            printf("\n");
-            n--;
-        } else {
-            printf("not_exist\n");
         }
     }
 }
@@ -295,6 +336,7 @@ int main() {
     RB_tree t = NULL;
     node_t *x;
     int k;
+    setvbuf(stdout, NULL, _IONBF, 0);
     if (scanf("%d", &k)) {
         while (1) {
             char temp[256];
