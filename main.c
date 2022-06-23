@@ -4,6 +4,7 @@
 
 #define RED 0
 #define BLACK 1
+#define ALPHABET_LENGTH 64
 
 typedef struct node {
     struct node *parent;
@@ -251,53 +252,143 @@ typedef struct list_node {
 } list_node_t;
 typedef list_node_t *list;
 
-void find_without(node_t *x, char c, int pos, list *toDelete) {
+void find_without_at(node_t *x, char c, int pos, list *toDelete) {
     if (x->word[pos] != c) {
         list_node_t *temp = *toDelete;
         *toDelete = malloc(sizeof(list_node_t));
         (*toDelete)->next = temp;
         (*toDelete)->ptr = x;
     }
-    if (x->left)find_without(x->left, c, pos, toDelete);
-    if (x->right)find_without(x->right, c, pos, toDelete);
+    if (x->left)find_without_at(x->left, c, pos, toDelete);
+    if (x->right)find_without_at(x->right, c, pos, toDelete);
 }
 
-void deleteIf(RB_tree *tree, node_t *x, char c, int pos) {
-    if (x->word[pos] == c)
-        delete(tree, x);
-    if (x->left)deleteIf(tree, x->left, c, pos);
-    if (x->right)deleteIf(tree, x->right, c, pos);
+void find_with(node_t *x, char c, list *toDelete) {
+    if (strchr(x->word, c)) {
+        list_node_t *temp = *toDelete;
+        *toDelete = malloc(sizeof(list_node_t));
+        (*toDelete)->next = temp;
+        (*toDelete)->ptr = x;
+    }
+    if (x->left)find_with(x->left, c, toDelete);
+    if (x->right)find_with(x->right, c, toDelete);
 }
 
-void nuova_partita(const RB_tree *tree, int k) {
+void free_list(list l) {
+    list_node_t *temp;
+    while (l) {
+        temp = l;
+        l = temp->next;
+        free(temp);
+    }
+}
+
+void delete_in(RB_tree *tree, list *toDelete) {
+    list_node_t *index = *toDelete;
+    while (index) {
+        free(delete(tree, index->ptr));
+        index = index->next;
+    }
+    free_list(*toDelete);
+    *toDelete = NULL;
+}
+
+void inserisci_inizio(RB_tree *dict, int k) {
+    node_t *x;
+    while (1) {
+        char read[256];
+        if (scanf("%s", read) < 0)break;
+        if (strcmp(read, "+inserisci_fine") == 0)
+            return;
+        if (strlen(read) == k) {
+            char *c = malloc(sizeof(char[k]));
+            strcpy(c, read);
+            x = malloc(sizeof(node_t));
+            x->word = c;
+            insert(dict, x);
+        }
+    }
+}
+
+int hash(char c) {
+    if (c == '_')return 0;
+    if (c == '-')return 1;
+    if (c >= '0' && c <= '9') return c - 46;    //2-11
+    if (c >= 'A' && c <= 'Z') return c - 53;    //12-37
+    if (c >= 'a' && c <= 'z') return c - 59;    //38-63
+    return -1;
+}
+
+char dehash(int i) {
+    if (i == 0)return '_';
+    if (i == 1)return '-';
+    if (i >= 2 && i <= 11) return (char) (i + 46);    //2-11
+    if (i >= 12 && i <= 37) return (char) (i + 53);    //12-37
+    if (i >= 38 && i <= 63) return (char) (i + 59);    //38-63
+    return -1;
+}
+
+void apply_filter_in_at(RB_tree *filtered_tree, const char *in_at, int k) {
+    list toDelete = NULL;
+    for (int i = 0; i < k; i++) {
+        if (in_at[i] >= 0) {
+            char c = in_at[i];
+            find_without_at(*filtered_tree, c, i, &toDelete);
+        }
+    }
+    delete_in(filtered_tree, &toDelete);
+}
+
+void apply_filter_not_in(RB_tree *filtered_tree, const char not_in[ALPHABET_LENGTH]) {
+    list toDelete = NULL;
+    for (int i = 0; i < ALPHABET_LENGTH; i++) {
+        if (not_in[i]) {
+            char c = dehash(i);
+            find_with(*filtered_tree, c, &toDelete);
+            delete_in(filtered_tree, &toDelete);
+        }
+    }
+}
+
+void nuova_partita(RB_tree *dictionary, int k) {
     char ref_word[k];
+    char not_in[ALPHABET_LENGTH] = {0};
+    char in_at[k];
+    for (int i = 0; i < k; i++) in_at[i] = -1;
+
     if (!scanf("%s", ref_word)) return;
     int n;
     if (!scanf("%d", &n)) return;
-    RB_tree filtered_tree = copy(*tree, NULL, k);
+    RB_tree filtered_tree = copy(*dictionary, NULL, k);
+
     //printTree(filtered_tree);
     while (n > 0) {
         char input[256];
         if (scanf("%s", input) < 0)break;
         if (strcmp(input, "+stampa_filtrate") == 0)
             printTree(filtered_tree);
+        else if (strcmp(input, "+inserisci_inizio") == 0)
+            inserisci_inizio(dictionary, k);
         else if (strlen(input) == k) {
-            if (search(*tree, input)) {
+            if (search(*dictionary, input)) {
                 char res[k];
                 char used[k];
-                list toDelete = NULL;
+                //list toDelete = NULL;
                 for (int j = 0; j < k; j++) {
                     if (ref_word[j] == input[j]) {
                         res[j] = '+';
                         used[j] = 1;
-                        find_without(filtered_tree, input[j], j, &toDelete);
+                        in_at[j] = input[j];
+                        //find_without_at(filtered_tree, input[j], j, &toDelete);
                         /*printf("To delete:\n");
                         while (toDelete) {
                             printf("\n%s", (toDelete)->ptr->word);
                             toDelete = (toDelete)->next;
                         }*/
+                        //delete_in(&filtered_tree, &toDelete);
                     }
                 }
+                apply_filter_in_at(&filtered_tree, in_at, k);
 
                 for (int j = 0; j < k; j++) {
                     if (res[j] != '+') {
@@ -309,16 +400,15 @@ void nuova_partita(const RB_tree *tree, int k) {
                                 found = 1;
                             }
                         }
-                        if (!found)
+                        if (!found) {
                             res[j] = '/';
+                            not_in[hash(input[j])] = 1;
+                            //find_with(filtered_tree, input[j], &toDelete);
+                            //delete_in(&filtered_tree, &toDelete);
+                        }
                     }
                 }
-
-                list_node_t *index = toDelete;
-                while (index) {
-                    delete(&filtered_tree, index->ptr);
-                    index = index->next;
-                }
+                apply_filter_not_in(&filtered_tree, not_in);
 
                 for (int j = 0; j < k; j++) {
                     printf("%c", res[j]);

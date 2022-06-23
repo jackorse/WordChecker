@@ -1,7 +1,8 @@
 5
 8adfs
 5sjaH
-KS06l
+Ks06l
+Kaaaa
 Hi23a
 laj74
 -s9k0
@@ -13,11 +14,10 @@ paF7s
 +nuova_partita
 5sjaH
 4
-KS06l
+Ks06l
++stampa_filtrate
 had7s
 okauE
-+stampa_filtrate
 -s9k0
 sghks
-+stampa_filtrate
 sm_ks
