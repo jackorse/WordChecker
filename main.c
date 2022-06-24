@@ -254,7 +254,7 @@ node_t *copy(const RB_tree *tree, const node_t *x, node_t *p) {
         node_t *node = malloc(sizeof(node_t));
         node->color = x->color;
         node->parent = p;
-        node->word = malloc(sizeof(char[k]));
+        node->word = malloc(sizeof(char[k]) + 1);
         strcpy(node->word, x->word);
         node->left = copy(tree, x->left, node);
         node->right = copy(tree, x->right, node);
@@ -294,7 +294,7 @@ void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDe
         list_node_t *temp = *toDelete;
         *toDelete = malloc(sizeof(list_node_t));
         (*toDelete)->next = temp;
-        (*toDelete)->word = malloc(sizeof(char[k]));
+        (*toDelete)->word = malloc(sizeof(char[k]) + 1);
         strcpy((*toDelete)->word, x->word);
         //}
     }
@@ -316,7 +316,7 @@ void find_with_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelet
         list_node_t *temp = *toDelete;
         *toDelete = malloc(sizeof(list_node_t));
         (*toDelete)->next = temp;
-        (*toDelete)->word = malloc(sizeof(char[k]));
+        (*toDelete)->word = malloc(sizeof(char[k]) + 1);
         strcpy((*toDelete)->word, x->word);
         //}
     }
@@ -345,7 +345,7 @@ void find_with(const RB_tree *tree, node_t *x, char c, int occ, list *toDelete) 
         list_node_t *temp = *toDelete;
         *toDelete = malloc(sizeof(list_node_t));
         (*toDelete)->next = temp;
-        (*toDelete)->word = malloc(sizeof(char[k]));
+        (*toDelete)->word = malloc(sizeof(char[k]) + 1);
         strcpy((*toDelete)->word, x->word);
         //}
     }
@@ -375,7 +375,7 @@ void find_with_min_occ(const RB_tree *tree, node_t *x, char c, int min, list *to
         list_node_t *temp = *toDelete;
         *toDelete = malloc(sizeof(list_node_t));
         (*toDelete)->next = temp;
-        (*toDelete)->word = malloc(sizeof(char[k]));
+        (*toDelete)->word = malloc(sizeof(char[k]) + 1);
         strcpy((*toDelete)->word, x->word);
         //}
     }
@@ -544,7 +544,7 @@ void destroy(RB_tree *tree, node_t *x) {
 }
 
 void nuova_partita() {
-    char ref_word[k];
+    char ref_word[k + 1];
     //char not_in[ALPHABET_LENGTH] = {0};
     char min_occ[ALPHABET_LENGTH] = {0};
     char occ[ALPHABET_LENGTH];
@@ -658,7 +658,7 @@ int main() {
             if (strcmp(temp, "+nuova_partita") == 0)
                 nuova_partita();
             if (strlen(temp) == k) {
-                char *c = malloc(sizeof(char[k]));
+                char *c = malloc(sizeof(char[k + 1]));
                 strcpy(c, temp);
                 x = malloc(sizeof(node_t));
                 x->word = c;
