@@ -242,8 +242,8 @@ node_t *delete(RB_tree *T, node_t *z) {
         y->parent->left = x;
     else y->parent->right = x;
     if (y != z)
-        z->word = y->word;
-    y->word = "DELET";
+        strcpy(z->word, y->word);
+    //y->word = "DELET";
     if (y->color == BLACK && x)
         delete_fixup(T, x);
     return y;
@@ -269,23 +269,34 @@ typedef struct list_node {
 } list_node_t;
 typedef list_node_t *list;
 
+/*
+static inline int streq(const char *s1, const char *s2, int l) {
+    for (l = l - 1; l >= 0; l--) {
+        if (s1[l] != s2[l])
+            return 0;
+    }
+    return 1;
+}*/
+
 void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete) {
     if (x == tree->nil) return;
     if (x->word[pos] != c) {
-        list_node_t *index = *toDelete;
-        char found = 0;
-        while (index) {
-            if (strcmp(index->word, x->word) == 0)
+        //list_node_t *index = *toDelete;
+        //char found = 0;
+        /*while (index) {
+            if (streq(index->word, x->word, k)) {
                 found = 1;
+                break;
+            }
             index = index->next;
-        }
-        if (!found) {
-            list_node_t *temp = *toDelete;
-            *toDelete = malloc(sizeof(list_node_t));
-            (*toDelete)->next = temp;
-            (*toDelete)->word = malloc(sizeof(char[k]));
-            strcpy((*toDelete)->word, x->word);
-        }
+        }*/
+        //if (!found) {
+        list_node_t *temp = *toDelete;
+        *toDelete = malloc(sizeof(list_node_t));
+        (*toDelete)->next = temp;
+        (*toDelete)->word = malloc(sizeof(char[k]));
+        strcpy((*toDelete)->word, x->word);
+        //}
     }
     find_without_at(tree, x->left, c, pos, toDelete);
     find_without_at(tree, x->right, c, pos, toDelete);
@@ -294,20 +305,20 @@ void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDe
 void find_with_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete) {
     if (x == tree->nil) return;
     if (x->word[pos] == c) {
-        list_node_t *index = *toDelete;
-        char found = 0;
-        while (index) {
+        //list_node_t *index = *toDelete;
+        //char found = 0;
+        /*while (index) {
             if (strcmp(index->word, x->word) == 0)
                 found = 1;
             index = index->next;
-        }
-        if (!found) {
-            list_node_t *temp = *toDelete;
-            *toDelete = malloc(sizeof(list_node_t));
-            (*toDelete)->next = temp;
-            (*toDelete)->word = malloc(sizeof(char[k]));
-            strcpy((*toDelete)->word, x->word);
-        }
+        }*/
+        //if (!found) {
+        list_node_t *temp = *toDelete;
+        *toDelete = malloc(sizeof(list_node_t));
+        (*toDelete)->next = temp;
+        (*toDelete)->word = malloc(sizeof(char[k]));
+        strcpy((*toDelete)->word, x->word);
+        //}
     }
     find_with_at(tree, x->left, c, pos, toDelete);
     find_with_at(tree, x->right, c, pos, toDelete);
@@ -321,22 +332,22 @@ void find_with(const RB_tree *tree, node_t *x, char c, int occ, list *toDelete) 
             count++;
     }
     if (occ != count) {
-        list_node_t *index = *toDelete;
-        char found = 0;
-        while (index) {
+        //list_node_t *index = *toDelete;
+        //char found = 0;
+        /*while (index) {
             if (strcmp(index->word, x->word) == 0) {
                 found = 1;
                 break;
             }
             index = index->next;
-        }
-        if (!found) {
-            list_node_t *temp = *toDelete;
-            *toDelete = malloc(sizeof(list_node_t));
-            (*toDelete)->next = temp;
-            (*toDelete)->word = malloc(sizeof(char[k]));
-            strcpy((*toDelete)->word, x->word);
-        }
+        }*/
+        //if (!found) {
+        list_node_t *temp = *toDelete;
+        *toDelete = malloc(sizeof(list_node_t));
+        (*toDelete)->next = temp;
+        (*toDelete)->word = malloc(sizeof(char[k]));
+        strcpy((*toDelete)->word, x->word);
+        //}
     }
     find_with(tree, x->left, c, occ, toDelete);
     find_with(tree, x->right, c, occ, toDelete);
@@ -350,21 +361,23 @@ void find_with_min_occ(const RB_tree *tree, node_t *x, char c, int min, list *to
             count++;
     }
     if (count < min) {
-        list_node_t *index = *toDelete;
-        char found = 0;
-        while (index) {
-            if (strcmp(index->word, x->word) == 0)
+        //list_node_t *index = *toDelete;
+        //char found = 0;
+        /*while (index) {
+            if (streq(index->word, x->word, k)) {
                 found = 1;
+                break;
+            }
             index = index->next;
-        }
-        if (!found) {
-            //printf("Adding %s", x->word);
-            list_node_t *temp = *toDelete;
-            *toDelete = malloc(sizeof(list_node_t));
-            (*toDelete)->next = temp;
-            (*toDelete)->word = malloc(sizeof(char[k]));
-            strcpy((*toDelete)->word, x->word);
-        }
+        }*/
+        //if (!found) {
+        //printf("Adding %s", x->word);
+        list_node_t *temp = *toDelete;
+        *toDelete = malloc(sizeof(list_node_t));
+        (*toDelete)->next = temp;
+        (*toDelete)->word = malloc(sizeof(char[k]));
+        strcpy((*toDelete)->word, x->word);
+        //}
     }
     find_with_min_occ(tree, x->left, c, min, toDelete);
     find_with_min_occ(tree, x->right, c, min, toDelete);
@@ -385,9 +398,11 @@ void delete_in(RB_tree *tree, list *toDelete) {
     list_node_t *index = *toDelete;
     while (index) {
         node_t *t = search(tree->root, index->word);
-        t = delete(tree, t);
-        //free(t->word);
-        free(t);
+        if (t != tree->nil) {
+            t = delete(tree, t);
+            free(t->word);
+            free(t);
+        }
         index = index->next;
     }
     free_list(*toDelete);
@@ -516,6 +531,18 @@ int count(const RB_tree *tree, node_t *x) {
     return c;
 }
 
+void destroy(RB_tree *tree, node_t *x) {
+    if (x->left != tree->nil) destroy(tree, x->left);
+    if (x->right != tree->nil) destroy(tree, x->right);
+
+    if (x == tree->root) {
+        //free(tree->nil->word);
+        free(tree->nil);
+    }
+    free(x->word);
+    free(x);
+}
+
 void nuova_partita() {
     char ref_word[k];
     //char not_in[ALPHABET_LENGTH] = {0};
@@ -550,6 +577,7 @@ void nuova_partita() {
         } else if (strlen(input) == k) {
             if (strcmp(input, ref_word) == 0) {
                 printf("ok\n");
+                destroy(&filtered_tree, filtered_tree.root);
                 return;
             } else if (search(dictionary.root, input) != dictionary.nil) {      //O(logn)
                 char _min_occ[ALPHABET_LENGTH] = {0};
@@ -612,7 +640,8 @@ void nuova_partita() {
             }
         }
     }
-    printf("ko\n");
+    printf("ko\n");;
+    destroy(&filtered_tree, filtered_tree.root);
 }
 
 int main() {
