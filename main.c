@@ -14,16 +14,22 @@ typedef struct node {
     char color;
 } node_t;
 
-typedef node_t *RB_tree;
+typedef struct tree {
+    node_t *root;
+    node_t *nil;
+} RB_tree;
+
+int k;
+RB_tree dictionary;
 
 void left_rotate(RB_tree *tree, node_t *x) {
     node_t *y = x->right;
     x->right = y->left; //il sottoalbero sinistro di y diventa quello destro di x
-    if (y->left != NULL)
+    if (y->left != tree->nil)
         y->left->parent = x;
     y->parent = x->parent; //attacca il padre di x a y
-    if (x->parent == NULL)
-        *tree = y;
+    if (x->parent == tree->nil)
+        tree->root = y;
     else if (x == x->parent->left)
         x->parent->left = y;
     else
@@ -35,11 +41,11 @@ void left_rotate(RB_tree *tree, node_t *x) {
 void right_rotate(RB_tree *tree, struct node *x) {
     node_t *y = x->left;
     x->left = y->right; //il sottoalbero sinistro di y diventa quello destro di x
-    if (y->right != NULL)
+    if (y->right != tree->nil)
         y->right->parent = x;
     y->parent = x->parent; //attacca il padre di x a y
-    if (x->parent == NULL)
-        *tree = y;
+    if (x->parent == tree->nil)
+        tree->root = y;
     else if (x == x->parent->right)
         x->parent->right = y;
     else
@@ -49,14 +55,14 @@ void right_rotate(RB_tree *tree, struct node *x) {
 }
 
 void insert_fixup(RB_tree *tree, node_t *z) {
-    if (z == *tree)
-        (*tree)->color = BLACK;
+    if (z == tree->root)
+        tree->root->color = BLACK;
     else {
         node_t *x = z->parent; // x e' il padre di z
         if (x->color == RED) {
             if (x == x->parent->left) {// se x e' figlio sin.ì
                 node_t *y = x->parent->right; // y e' fratello di x
-                if (y && y->color == RED) {
+                if (/*y && */y->color == RED) {
                     x->color = BLACK; // Caso 1
                     y->color = BLACK; // Caso 1
                     x->parent->color = RED; // Caso 1
@@ -73,7 +79,7 @@ void insert_fixup(RB_tree *tree, node_t *z) {
                 }
             } else {//(come 6 - 18, scambiando “right”↔“left”)
                 node_t *y = x->parent->left; // y e' fratello di x
-                if (y && y->color == RED) {
+                if (/*y && */y->color == RED) {
                     x->color = BLACK; // Caso 1
                     y->color = BLACK; // Caso 1
                     x->parent->color = RED; // Caso 1
@@ -94,9 +100,9 @@ void insert_fixup(RB_tree *tree, node_t *z) {
 }
 
 void insert(RB_tree *tree, node_t *z) {
-    node_t *y = NULL; // y padre del nodo considerato
-    node_t *x = *tree; // nodo considerato
-    while (x != NULL) {
+    node_t *y = tree->nil; // y padre del nodo considerato
+    node_t *x = tree->root; // nodo considerato
+    while (x != tree->nil) {
         y = x;
         if (strcmp(z->word, x->word) < 0)
             x = x->left;
@@ -104,20 +110,20 @@ void insert(RB_tree *tree, node_t *z) {
             x = x->right;
     }
     z->parent = y;
-    if (y == NULL)
-        *tree = z; //l'albero T e' vuoto
+    if (y == tree->nil)
+        tree->root = z; //l'albero T e' vuoto
     else if (strcmp(z->word, y->word) < 0)
         y->left = z;
     else
         y->right = z;
-    z->left = NULL;
-    z->right = NULL;
+    z->left = tree->nil;
+    z->right = tree->nil;
     z->color = RED;
     insert_fixup(tree, z);
 }
 
 void printTree(const node_t *x) {
-    if (x != NULL) {
+    if (strcmp(x->word, "NIL") != 0) {
         printTree(x->left);
         printf("%s\n", x->word);
         printTree(x->right);
@@ -137,7 +143,7 @@ char *readWord(int n) {
 }*/
 
 node_t *search(node_t *x, char *word) {
-    if (x == NULL || strcmp(word, x->word) == 0)
+    if (strcmp(x->word, "NIL") == 0 || strcmp(word, x->word) == 0)
         return x;
     if (strcmp(word, x->word) < 0)
         return search(x->left, word);
@@ -145,119 +151,131 @@ node_t *search(node_t *x, char *word) {
 }
 
 node_t *tree_minimum(node_t *x) {
-    while (x->left != NULL)
+    while (strcmp(x->left->word, "NIL") != 0)
         x = x->left;
     return x;
 }
 
 node_t *tree_successor(node_t *x) {
-    if (x->right != NULL)
+    if (strcmp(x->right->word, "NIL") != 0)
         return tree_minimum(x->right);
     node_t *y = x->parent;
-    while (y != NULL && x == y->right) {
+    while (strcmp(y->word, "NIL") != 0 && x == y->right) {
         x = y;
         y = y->parent;
     }
     return y;
 }
 
-void delete_fixup(RB_tree *T, node_t *x) {
-    if (x->color == RED || x->parent == NULL)
+void delete_fixup(RB_tree *tree, node_t *x) {
+    if (x->color == RED || x->parent == tree->nil)
         x->color = BLACK; // Caso 0
     else if (x == x->parent->left) {// x e' figlio sinistro
         node_t *w = x->parent->right; // w e' fratello di x
-        if (w->color == RED) {
+        if (/*w && */w->color == RED) {
             w->color = BLACK; // Caso 1
             x->parent->color = RED; // Caso 1
-            left_rotate(T, x->parent);// Caso 1
+            left_rotate(tree, x->parent);// Caso 1
             w = x->parent->right;
         }// Caso 1
-        if (w->left->color == BLACK && w->right->color == BLACK) {
+        char lcolor = BLACK, rcolor = BLACK;
+        if (w->left) lcolor = w->left->color;
+        if (w->right) rcolor = w->right->color;
+        if (lcolor == BLACK && rcolor == BLACK) {
             w->color = RED; // Caso 2
-            delete_fixup(T, x->parent); // Caso 2
-        } else if (w->right->color == BLACK) {
-            w->left->color = BLACK; // Caso 3
-            w->color = RED; // Caso 3
-            right_rotate(T, w); // Caso 3
-            w = x->parent->right; // Caso 3
+            delete_fixup(tree, x->parent); // Caso 2
+        } else {
+            if (rcolor == BLACK) {
+                w->left->color = BLACK; // Caso 3
+                w->color = RED; // Caso 3
+                right_rotate(tree, w); // Caso 3
+                w = x->parent->right; // Caso 3
+            }
+            w->color = x->parent->color; // Caso 4
+            x->parent->color = BLACK; // Caso 4
+            if (w->right)w->right->color = BLACK; // Caso 4
+            left_rotate(tree, x->parent); // Caso 4
         }
-        w->color = x->parent->color; // Caso 4
-        x->parent->color = BLACK; // Caso 4
-        w->right->color = BLACK; // Caso 4
-        left_rotate(T, x->parent); // Caso 4
     } else {
         node_t *w = x->parent->left; // w e' fratello di x
-        if (w->color == RED) {
+        if (w && w->color == RED) {
             w->color = BLACK; // Caso 1
             x->parent->color = RED; // Caso 1
-            right_rotate(T, x->parent);// Caso 1
+            right_rotate(tree, x->parent);// Caso 1
             w = x->parent->left;
         }// Caso 1
-        if (w->right->color == BLACK && w->left->color == BLACK) {
+        char lcolor = BLACK, rcolor = BLACK;
+        if (w->left) lcolor = w->left->color;
+        if (w->right) rcolor = w->right->color;
+        if (rcolor == BLACK && lcolor == BLACK) {
             w->color = RED; // Caso 2
-            delete_fixup(T, x->parent); // Caso 2
-        } else if (w->left->color == BLACK) {
-            w->right->color = BLACK; // Caso 3
-            w->color = RED; // Caso 3
-            left_rotate(T, w); // Caso 3
-            w = x->parent->left; // Caso 3
+            delete_fixup(tree, x->parent); // Caso 2
+        } else {
+            if (lcolor == BLACK) {
+                w->right->color = BLACK; // Caso 3
+                w->color = RED; // Caso 3
+                left_rotate(tree, w); // Caso 3
+                w = x->parent->left; // Caso 3
+            }
+            w->color = x->parent->color; // Caso 4
+            x->parent->color = BLACK; // Caso 4
+            if (w->left)w->left->color = BLACK; // Caso 4
+            right_rotate(tree, x->parent); // Caso 4
         }
-        w->color = x->parent->color; // Caso 4
-        x->parent->color = BLACK; // Caso 4
-        w->left->color = BLACK; // Caso 4
-        right_rotate(T, x->parent); // Caso 4
     }
 }
 
 node_t *delete(RB_tree *T, node_t *z) {
     node_t *y;
-    if (z->left == NULL || z->right == NULL)
+    if (z->left == T->nil || z->right == T->nil)
         y = z;
     else
         y = tree_successor(z);
     node_t *x;
-    if (y->left != NULL)
+    if (y->left != T->nil)
         x = y->left;
     else x = y->right;
-    if (x) x->parent = y->parent; // x potrebbe essere T.nil;
-    if (y->parent == NULL)
-        *T = x;
+    /*if (x) */x->parent = y->parent; // x potrebbe essere T.nil;
+    if (y->parent == T->nil)
+        T->root = x;
     else if (y == y->parent->left)
         y->parent->left = x;
     else y->parent->right = x;
     if (y != z)
         z->word = y->word;
+    y->word = "DELET";
     if (y->color == BLACK && x)
         delete_fixup(T, x);
     return y;
 }
 
-node_t *copy(const node_t *x, node_t *p, int k) {
-    if (x != NULL) {
+node_t *copy(const RB_tree *tree, const node_t *x, node_t *p) {
+    if (x != dictionary.nil) {
         node_t *node = malloc(sizeof(node_t));
         node->color = x->color;
         node->parent = p;
         node->word = malloc(sizeof(char[k]));
         strcpy(node->word, x->word);
-        node->left = copy(x->left, node, k);
-        node->right = copy(x->right, node, k);
+        node->left = copy(tree, x->left, node);
+        node->right = copy(tree, x->right, node);
         return node;
     }
-    return NULL;
+    return tree->nil;
 }
 
 typedef struct list_node {
-    node_t *ptr;
+    char *word;
     struct list_node *next;
 } list_node_t;
 typedef list_node_t *list;
 
-void find_without_at(node_t *x, char c, int pos, list *toDelete) {
+void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete) {
+    if (x == tree->nil) return;
     if (x->word[pos] != c) {
         list_node_t *index = *toDelete;
         char found = 0;
         while (index) {
-            if (index->ptr == x)
+            if (strcmp(index->word, x->word) == 0)
                 found = 1;
             index = index->next;
         }
@@ -265,19 +283,21 @@ void find_without_at(node_t *x, char c, int pos, list *toDelete) {
             list_node_t *temp = *toDelete;
             *toDelete = malloc(sizeof(list_node_t));
             (*toDelete)->next = temp;
-            (*toDelete)->ptr = x;
+            (*toDelete)->word = malloc(sizeof(char[k]));
+            strcpy((*toDelete)->word, x->word);
         }
     }
-    if (x->left)find_without_at(x->left, c, pos, toDelete);
-    if (x->right)find_without_at(x->right, c, pos, toDelete);
+    find_without_at(tree, x->left, c, pos, toDelete);
+    find_without_at(tree, x->right, c, pos, toDelete);
 }
 
-void find_with(node_t *x, char c, list *toDelete) {
-    if (strchr(x->word, c)) {
+void find_with_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete) {
+    if (x == tree->nil) return;
+    if (x->word[pos] == c) {
         list_node_t *index = *toDelete;
         char found = 0;
         while (index) {
-            if (index->ptr == x)
+            if (strcmp(index->word, x->word) == 0)
                 found = 1;
             index = index->next;
         }
@@ -285,37 +305,67 @@ void find_with(node_t *x, char c, list *toDelete) {
             list_node_t *temp = *toDelete;
             *toDelete = malloc(sizeof(list_node_t));
             (*toDelete)->next = temp;
-            (*toDelete)->ptr = x;
+            (*toDelete)->word = malloc(sizeof(char[k]));
+            strcpy((*toDelete)->word, x->word);
         }
     }
-    if (x->left)find_with(x->left, c, toDelete);
-    if (x->right)find_with(x->right, c, toDelete);
+    find_with_at(tree, x->left, c, pos, toDelete);
+    find_with_at(tree, x->right, c, pos, toDelete);
 }
 
-void find_with_min_occ(node_t *x, char c, int min, int k, list *toDelete) {
+void find_with(const RB_tree *tree, node_t *x, char c, int occ, int k, list *toDelete) {
+    if (x == tree->nil) return;
+    int count = 0;
     for (int i = 0; i < k; i++) {
         if (x->word[i] == c)
-            min--;
+            count++;
     }
-    if (min > 0) {
-
+    if (occ != count) {
         list_node_t *index = *toDelete;
         char found = 0;
         while (index) {
-            if (index->ptr == x)
+            if (strcmp(index->word, x->word) == 0)
                 found = 1;
             index = index->next;
         }
         if (!found) {
-            printf("Adding %s", x->word);
             list_node_t *temp = *toDelete;
             *toDelete = malloc(sizeof(list_node_t));
             (*toDelete)->next = temp;
-            (*toDelete)->ptr = x;
+            (*toDelete)->word = malloc(sizeof(char[k]));
+            strcpy((*toDelete)->word, x->word);
         }
     }
-    if (x->left)find_with_min_occ(x->left, c, min, k, toDelete);
-    if (x->right)find_with_min_occ(x->right, c, min, k, toDelete);
+    find_with(tree, x->left, c, occ, k, toDelete);
+    find_with(tree, x->right, c, occ, k, toDelete);
+}
+
+void find_with_min_occ(const RB_tree *tree, node_t *x, char c, int min, int k, list *toDelete) {
+    if (x == tree->nil) return;
+    int count = 0;
+    for (int i = 0; i < k; i++) {
+        if (x->word[i] == c)
+            count++;
+    }
+    if (count < min) {
+        list_node_t *index = *toDelete;
+        char found = 0;
+        while (index) {
+            if (strcmp(index->word, x->word) == 0)
+                found = 1;
+            index = index->next;
+        }
+        if (!found) {
+            //printf("Adding %s", x->word);
+            list_node_t *temp = *toDelete;
+            *toDelete = malloc(sizeof(list_node_t));
+            (*toDelete)->next = temp;
+            (*toDelete)->word = malloc(sizeof(char[k]));
+            strcpy((*toDelete)->word, x->word);
+        }
+    }
+    find_with_min_occ(tree, x->left, c, min, k, toDelete);
+    find_with_min_occ(tree, x->right, c, min, k, toDelete);
 }
 
 
@@ -331,26 +381,38 @@ void free_list(list l) {
 void delete_in(RB_tree *tree, list *toDelete) {
     list_node_t *index = *toDelete;
     while (index) {
-        free(delete(tree, index->ptr));
+        node_t *t = search(tree->root, index->word);
+        t = delete(tree, t);
+        //free(t->word);
+        free(t);
         index = index->next;
     }
     free_list(*toDelete);
     *toDelete = NULL;
 }
 
-void inserisci_inizio(RB_tree *dict, int k) {
-    node_t *x;
+void inserisci_inizio(RB_tree *dict) {
+    node_t *new_dict, *new_filtered;
     while (1) {
         char read[256];
         if (scanf("%s", read) < 0)break;
         if (strcmp(read, "+inserisci_fine") == 0)
             return;
         if (strlen(read) == k) {
-            char *c = malloc(sizeof(char[k]));
-            strcpy(c, read);
-            x = malloc(sizeof(node_t));
-            x->word = c;
-            insert(dict, x);
+            char *new_dict_word = malloc(sizeof(char[k]));
+            char *new_filtered_word = malloc(sizeof(char[k]));
+            strcpy(new_dict_word, read);
+            strcpy(new_filtered_word, read);
+            new_dict = malloc(sizeof(node_t));
+            new_filtered = malloc(sizeof(node_t));
+            new_dict->word = new_dict_word;
+            new_dict->left = dictionary.nil;
+            new_dict->right = dictionary.nil;
+            new_filtered->word = new_filtered_word;
+            new_filtered->left = dict->nil;
+            new_filtered->right = dict->nil;
+            insert(&dictionary, new_dict);
+            insert(dict, new_filtered);
         }
     }
 }
@@ -373,9 +435,10 @@ char dehash(int i) {
     return -1;
 }
 
-void apply_filters(RB_tree *filtered_tree, int k, const char *in_at, const char not_in[ALPHABET_LENGTH],
-                   const char min_occ[ALPHABET_LENGTH]) {
-    if (!*filtered_tree) {
+void apply_filters(RB_tree *filtered_tree, int k, const char *in_at, /*const char not_in[ALPHABET_LENGTH],*/
+                   const char min_occ[ALPHABET_LENGTH], const char occ[ALPHABET_LENGTH],
+                   const char not_in_at[k][ALPHABET_LENGTH]) {
+    if (!filtered_tree->root) {
         printf("filtered_tree null!!!");
         return;
     }
@@ -384,17 +447,24 @@ void apply_filters(RB_tree *filtered_tree, int k, const char *in_at, const char 
     for (int i = 0; i < k; i++) {
         if (in_at[i] >= 0) {
             char c = in_at[i];
-            find_without_at(*filtered_tree, c, i, &toDelete);
+            find_without_at(filtered_tree, filtered_tree->root, c, i, &toDelete);
+        }
+
+        for (int j = 0; j < ALPHABET_LENGTH; j++) {
+            char c = dehash(j);
+            if (not_in_at[i][j]) {
+                find_with_at(filtered_tree, filtered_tree->root, c, i, &toDelete);
+            }
         }
     }
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
-        if (not_in[i]) {
+        if (occ[i] >= 0) {
             char c = dehash(i);
-            find_with(*filtered_tree, c, &toDelete);
+            find_with(filtered_tree, filtered_tree->root, c, occ[i], k, &toDelete);
         }
         if (min_occ[i] > 0) {
             char c = dehash(i);
-            find_with_min_occ(*filtered_tree, c, min_occ[i], k, &toDelete);
+            find_with_min_occ(filtered_tree, filtered_tree->root, c, min_occ[i], k, &toDelete);
         }
     }
     delete_in(filtered_tree, &toDelete);
@@ -405,12 +475,13 @@ void apply_filter_in_at(RB_tree *filtered_tree, const char *in_at, int k) {
     for (int i = 0; i < k; i++) {
         if (in_at[i] >= 0) {
             char c = in_at[i];
-            find_without_at(*filtered_tree, c, i, &toDelete);
+            find_without_at(filtered_tree, filtered_tree->root, c, i, &toDelete);
         }
     }
     delete_in(filtered_tree, &toDelete);
 }
 
+/*
 void apply_filter_not_in(RB_tree *filtered_tree, const char not_in[ALPHABET_LENGTH]) {
     list toDelete = NULL;
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
@@ -420,41 +491,64 @@ void apply_filter_not_in(RB_tree *filtered_tree, const char not_in[ALPHABET_LENG
             delete_in(filtered_tree, &toDelete);
         }
     }
-}
+}*/
 
 void apply_filter_min_occ(RB_tree *filtered_tree, const char min_occ[ALPHABET_LENGTH], int k) {
     list toDelete = NULL;
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
         if (min_occ[i] > 0) {
             char c = dehash(i);
-            find_with_min_occ(*filtered_tree, c, min_occ[i], k, &toDelete);
+            find_with_min_occ(filtered_tree, filtered_tree->root, c, min_occ[i], k, &toDelete);
             delete_in(filtered_tree, &toDelete);
         }
     }
 }
 
-void nuova_partita(RB_tree *dictionary, int k) {
+int count(const RB_tree *tree, node_t *x) {
+    if (x == tree->nil) return 0;
+    int c = 1;
+    c += count(tree, x->left);
+    c += count(tree, x->right);
+    return c;
+}
+
+void nuova_partita() {
     char ref_word[k];
-    char not_in[ALPHABET_LENGTH] = {0};
+    //char not_in[ALPHABET_LENGTH] = {0};
     char min_occ[ALPHABET_LENGTH] = {0};
+    char occ[ALPHABET_LENGTH];
     char in_at[k];
+    char not_in_at[k][ALPHABET_LENGTH];
     for (int i = 0; i < k; i++) in_at[i] = -1;
+    for (int i = 0; i < ALPHABET_LENGTH; i++) occ[i] = -1;
+    for (int i = 0; i < k; i++)
+        for (int j = 0; j < ALPHABET_LENGTH; j++)
+            not_in_at[i][j] = 0;
 
     if (!scanf("%s", ref_word)) return;
     int n;
     if (!scanf("%d", &n)) return;
-    RB_tree filtered_tree = copy(*dictionary, NULL, k);
-
+    RB_tree filtered_tree;
+    filtered_tree.nil = malloc(sizeof(node_t));
+    filtered_tree.nil->word = "NIL";
+    filtered_tree.nil->color = BLACK;
+    filtered_tree.root = filtered_tree.nil;
+    filtered_tree.root = copy(&filtered_tree, dictionary.root, filtered_tree.nil);
     //printTree(filtered_tree);
     while (n > 0) {
         char input[256];
         if (scanf("%s", input) < 0)break;
         if (strcmp(input, "+stampa_filtrate") == 0)
-            printTree(filtered_tree);
-        else if (strcmp(input, "+inserisci_inizio") == 0)
-            inserisci_inizio(dictionary, k);
-        else if (strlen(input) == k) {
-            if (search(*dictionary, input)) {
+            printTree(filtered_tree.root);
+        else if (strcmp(input, "+inserisci_inizio") == 0) {
+            inserisci_inizio(&filtered_tree);
+            apply_filters(&filtered_tree, k, in_at,/* not_in, */min_occ, occ, not_in_at);
+        } else if (strlen(input) == k) {
+            if (strcmp(input, ref_word) == 0) {
+                printf("ok\n");
+                return;
+            } else if (search(dictionary.root, input) != dictionary.nil) {
+                char _min_occ[ALPHABET_LENGTH] = {0};
                 char res[k];
                 char used[k];
                 //list toDelete = NULL;
@@ -470,7 +564,7 @@ void nuova_partita(RB_tree *dictionary, int k) {
                             toDelete = (toDelete)->next;
                         }*/
                         //delete_in(&filtered_tree, &toDelete);
-                        min_occ[hash(input[j])]++;
+                        _min_occ[hash(input[j])]++;
                     }
                 }
                 //apply_filter_in_at(&filtered_tree, in_at, k);
@@ -485,12 +579,16 @@ void nuova_partita(RB_tree *dictionary, int k) {
 
                                 used[i] = 1;
                                 found = 1;
-                                min_occ[hash(input[j])]++;
+                                _min_occ[hash(input[j])]++;
+                                not_in_at[j][hash(input[j])] = 1;
                             }
                         }
+                        if (_min_occ[hash(input[j])] > min_occ[hash(input[j])])
+                            min_occ[hash(input[j])] = _min_occ[hash(input[j])];
                         if (!found) {
                             res[j] = '/';
-                            not_in[hash(input[j])] = 1;
+                            //not_in[hash(input[j])] = 1;
+                            occ[hash(input[j])] = min_occ[hash(input[j])];
                             //find_with(filtered_tree, input[j], &toDelete);
                             //delete_in(&filtered_tree, &toDelete);
                         }
@@ -498,37 +596,40 @@ void nuova_partita(RB_tree *dictionary, int k) {
                 }
                 //apply_filter_not_in(&filtered_tree, not_in);
                 //apply_filter_min_occ(&filtered_tree, min_occ,k);
-                apply_filters(&filtered_tree, k, in_at, not_in, min_occ);
+                apply_filters(&filtered_tree, k, in_at,/* not_in, */min_occ, occ, not_in_at);
 
                 for (int j = 0; j < k; j++) {
                     printf("%c", res[j]);
                 }
-                printf("\n");
+                printf("\n%d\n", count(&filtered_tree, filtered_tree.root));
                 n--;
             } else {
-                printf("not_exist\n");
+                printf("not_exists\n");
             }
         }
     }
+    printf("ko\n");
 }
 
 int main() {
-    RB_tree t = NULL;
+    dictionary.nil = malloc(sizeof(node_t));
+    dictionary.nil->word = "NIL";
+    dictionary.nil->color = BLACK;
+    dictionary.root = dictionary.nil;
     node_t *x;
-    int k;
     setvbuf(stdout, NULL, _IONBF, 0);
     if (scanf("%d", &k)) {
         while (1) {
             char temp[256];
             if (scanf("%s", temp) < 0)break;
             if (strcmp(temp, "+nuova_partita") == 0)
-                nuova_partita(&t, k);
+                nuova_partita();
             if (strlen(temp) == k) {
                 char *c = malloc(sizeof(char[k]));
                 strcpy(c, temp);
                 x = malloc(sizeof(node_t));
                 x->word = c;
-                insert(&t, x);
+                insert(&dictionary, x);
             }
         }
     }
