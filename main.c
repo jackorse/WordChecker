@@ -480,7 +480,7 @@ void apply_filters(RB_tree *filtered_tree, const char *in_at, /*const char not_i
             char c = dehash(i);
             find_with(filtered_tree, filtered_tree->root, c, occ[i], &toDelete);
         }
-        if (min_occ[i] > 0) {
+        else if (min_occ[i] > 0) {
             char c = dehash(i);
             find_with_min_occ(filtered_tree, filtered_tree->root, c, min_occ[i], &toDelete);
         }
@@ -613,6 +613,7 @@ void nuova_partita() {
                                 found = 1;
                                 _min_occ[hash(input[j])]++;
                                 not_in_at[j][hash(input[j])] = 1;
+                                break;
                             }
                         }
                         if (_min_occ[hash(input[j])] > min_occ[hash(input[j])])
@@ -620,6 +621,7 @@ void nuova_partita() {
                         if (!found) {
                             res[j] = '/';
                             //not_in[hash(input[j])] = 1;
+                            not_in_at[j][hash(input[j])] = 1;
                             occ[hash(input[j])] = min_occ[hash(input[j])];
                             //find_with(filtered_tree, input[j], &toDelete);
                             //delete_in(&filtered_tree, &toDelete);
