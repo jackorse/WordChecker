@@ -123,7 +123,7 @@ void insert(RB_tree *tree, node_t *z) {
 }
 
 void printTree(const node_t *x) {
-    if (strcmp(x->word, "NIL") != 0) {
+    if (x->word) {
         printTree(x->left);
         printf("%s\n", x->word);
         printTree(x->right);
@@ -143,7 +143,7 @@ char *readWord(int n) {
 }*/
 
 node_t *search(node_t *x, char *word) {
-    if (strcmp(x->word, "NIL") == 0 || strcmp(word, x->word) == 0)
+    if (!x->word || strcmp(word, x->word) == 0)
         return x;
     if (strcmp(word, x->word) < 0)
         return search(x->left, word);
@@ -151,16 +151,16 @@ node_t *search(node_t *x, char *word) {
 }
 
 node_t *tree_minimum(node_t *x) {
-    while (strcmp(x->left->word, "NIL") != 0)
+    while (x->left->word)
         x = x->left;
     return x;
 }
 
 node_t *tree_successor(node_t *x) {
-    if (strcmp(x->right->word, "NIL") != 0)
+    if (x->right->word)
         return tree_minimum(x->right);
     node_t *y = x->parent;
-    while (strcmp(y->word, "NIL") != 0 && x == y->right) {
+    while (y->word && x == y->right) {
         x = y;
         y = y->parent;
     }
@@ -561,7 +561,7 @@ void nuova_partita() {
     if (!scanf("%d", &n)) return;
     RB_tree filtered_tree;
     filtered_tree.nil = malloc(sizeof(node_t));
-    filtered_tree.nil->word = "NIL";
+    filtered_tree.nil->word = NULL;
     filtered_tree.nil->color = BLACK;
     filtered_tree.root = filtered_tree.nil;
     filtered_tree.root = copy(&filtered_tree, dictionary.root, filtered_tree.nil);
@@ -648,7 +648,7 @@ void nuova_partita() {
 
 int main() {
     dictionary.nil = malloc(sizeof(node_t));
-    dictionary.nil->word = "NIL";
+    dictionary.nil->word = NULL;
     dictionary.nil->color = BLACK;
     dictionary.root = dictionary.nil;
     node_t *x;
