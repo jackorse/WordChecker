@@ -417,8 +417,8 @@ void inserisci_inizio(RB_tree *dict) {
         if (strcmp(read, "+inserisci_fine") == 0)
             return;
         if (strlen(read) == k) {
-            char *new_dict_word = malloc(sizeof(char[k]));
-            char *new_filtered_word = malloc(sizeof(char[k]));
+            char *new_dict_word = malloc(sizeof(char[k + 1]));
+            char *new_filtered_word = malloc(sizeof(char[k + 1]));
             strcpy(new_dict_word, read);
             strcpy(new_filtered_word, read);
             new_dict = malloc(sizeof(node_t));
@@ -479,8 +479,7 @@ void apply_filters(RB_tree *filtered_tree, const char *in_at, /*const char not_i
         if (occ[i] >= 0) {
             char c = dehash(i);
             find_with(filtered_tree, filtered_tree->root, c, occ[i], &toDelete);
-        }
-        else if (min_occ[i] > 0) {
+        } else if (min_occ[i] > 0) {
             char c = dehash(i);
             find_with_min_occ(filtered_tree, filtered_tree->root, c, min_occ[i], &toDelete);
         }
@@ -583,6 +582,10 @@ void nuova_partita() {
                 char _min_occ[ALPHABET_LENGTH] = {0};
                 char res[k];
                 char used[k];
+                for (int i = 0; i < k; i++) {
+                    res[i] = 0;
+                    used[i] = 0;
+                }
                 //list toDelete = NULL;
                 for (int j = 0; j < k; j++) {                                            //O(k)
                     if (ref_word[j] == input[j]) {
