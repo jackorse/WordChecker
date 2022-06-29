@@ -269,17 +269,18 @@ typedef struct list_node {
 } list_node_t;
 typedef list_node_t *list;
 
-/*
+
 static inline int streq(const char *s1, const char *s2, int l) {
     for (l = l - 1; l >= 0; l--) {
         if (s1[l] != s2[l])
             return 0;
     }
     return 1;
-}*/
+}
 
-void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete) {
+void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete_head, list *toDelete_index) {
     if (x == tree->nil) return;
+    find_without_at(tree, x->left, c, pos, toDelete_head, toDelete_index);
     if (x->word[pos] != c) {
         //list_node_t *index = *toDelete;
         //char found = 0;
@@ -291,19 +292,58 @@ void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDe
             index = index->next;
         }*/
         //if (!found) {
-        list_node_t *temp = *toDelete;
+        /*list_node_t *temp = *toDelete;
         *toDelete = malloc(sizeof(list_node_t));
         (*toDelete)->next = temp;
         (*toDelete)->word = malloc(sizeof(char[k]) + 1);
-        strcpy((*toDelete)->word, x->word);
+        strcpy((*toDelete)->word, x->word);*/
         //}
+        /*if (!**toDelete_head) {
+            **toDelete_head = malloc(sizeof(list_node_t));
+            (**toDelete_head)->next = NULL;
+            (**toDelete_head)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((**toDelete_head)->word, x->word);
+            toDelete_index = toDelete_head;
+        }*/
+
+        while (*toDelete_index && (*toDelete_index)->next && strcmp(x->word, (*toDelete_index)->next->word) > 0) {
+            /*if (streq(index->word, x->word, k)) {
+                found = 1;
+                break;
+            }*/
+            *toDelete_index = (*toDelete_index)->next;
+        }
+        //if (!found) {
+        //printf("Adding %s", x->word);
+        char head_changed = 0;
+        if (*toDelete_index == *toDelete_head) head_changed = 1;
+        if (!*toDelete_index) {
+            *toDelete_index = malloc(sizeof(list_node_t));
+            (*toDelete_index)->next = NULL;
+            (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((*toDelete_index)->word, x->word);
+        } else if (!(*toDelete_index)->next && strcmp((*toDelete_index)->word, x->word) > 0) {
+            list_node_t *temp = *toDelete_index;
+            *toDelete_index = malloc(sizeof(list_node_t));
+            (*toDelete_index)->next = temp;
+            (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((*toDelete_index)->word, x->word);
+        } else if ((!(*toDelete_index)->next && strcmp((*toDelete_index)->word, x->word) < 0) ||
+                   ((*toDelete_index)->next && strcmp((*toDelete_index)->next->word, x->word) != 0)) {
+            list_node_t *new = malloc(sizeof(list_node_t));
+            new->next = (*toDelete_index)->next;
+            new->word = malloc(sizeof(char[k]) + 1);
+            strcpy(new->word, x->word);
+            (*toDelete_index)->next = new;
+        }
+        if (head_changed) *toDelete_head = *toDelete_index;
     }
-    find_without_at(tree, x->left, c, pos, toDelete);
-    find_without_at(tree, x->right, c, pos, toDelete);
+    find_without_at(tree, x->right, c, pos, toDelete_head, toDelete_index);
 }
 
-void find_with_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete) {
+void find_with_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete_head, list *toDelete_index) {
     if (x == tree->nil) return;
+    find_with_at(tree, x->left, c, pos, toDelete_head, toDelete_index);
     if (x->word[pos] == c) {
         //list_node_t *index = *toDelete;
         //char found = 0;
@@ -313,19 +353,51 @@ void find_with_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelet
             index = index->next;
         }*/
         //if (!found) {
-        list_node_t *temp = *toDelete;
+        /*list_node_t *temp = *toDelete;
         *toDelete = malloc(sizeof(list_node_t));
         (*toDelete)->next = temp;
         (*toDelete)->word = malloc(sizeof(char[k]) + 1);
-        strcpy((*toDelete)->word, x->word);
+        strcpy((*toDelete)->word, x->word);*/
         //}
+
+        while (*toDelete_index && (*toDelete_index)->next && strcmp(x->word, (*toDelete_index)->next->word) > 0) {
+            /*if (streq(index->word, x->word, k)) {
+                found = 1;
+                break;
+            }*/
+            *toDelete_index = (*toDelete_index)->next;
+        }
+        //if (!found) {
+        //printf("Adding %s", x->word);
+        char head_changed = 0;
+        if (*toDelete_index == *toDelete_head) head_changed = 1;
+        if (!*toDelete_index) {
+            *toDelete_index = malloc(sizeof(list_node_t));
+            (*toDelete_index)->next = NULL;
+            (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((*toDelete_index)->word, x->word);
+        } else if (!(*toDelete_index)->next && strcmp((*toDelete_index)->word, x->word) > 0) {
+            list_node_t *temp = *toDelete_index;
+            *toDelete_index = malloc(sizeof(list_node_t));
+            (*toDelete_index)->next = temp;
+            (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((*toDelete_index)->word, x->word);
+        } else if ((!(*toDelete_index)->next && strcmp((*toDelete_index)->word, x->word) < 0) ||
+                   ((*toDelete_index)->next && strcmp((*toDelete_index)->next->word, x->word) != 0)) {
+            list_node_t *new = malloc(sizeof(list_node_t));
+            new->next = (*toDelete_index)->next;
+            new->word = malloc(sizeof(char[k]) + 1);
+            strcpy(new->word, x->word);
+            (*toDelete_index)->next = new;
+        }
+        if (head_changed) *toDelete_head = *toDelete_index;
     }
-    find_with_at(tree, x->left, c, pos, toDelete);
-    find_with_at(tree, x->right, c, pos, toDelete);
+    find_with_at(tree, x->right, c, pos, toDelete_head, toDelete_index);
 }
 
-void find_with(const RB_tree *tree, node_t *x, char c, int occ, list *toDelete) {
+void find_with(const RB_tree *tree, node_t *x, char c, int occ, list *toDelete_head, list *toDelete_index) {
     if (x == tree->nil) return;
+    find_with(tree, x->left, c, occ, toDelete_head, toDelete_index);
     int count = 0;
     for (int i = 0; i < k; i++) {
         if (x->word[i] == c)
@@ -342,45 +414,92 @@ void find_with(const RB_tree *tree, node_t *x, char c, int occ, list *toDelete) 
             index = index->next;
         }*/
         //if (!found) {
-        list_node_t *temp = *toDelete;
+        /*list_node_t *temp = *toDelete;
         *toDelete = malloc(sizeof(list_node_t));
         (*toDelete)->next = temp;
         (*toDelete)->word = malloc(sizeof(char[k]) + 1);
-        strcpy((*toDelete)->word, x->word);
+        strcpy((*toDelete)->word, x->word);*/
         //}
+
+
+        while (*toDelete_index && (*toDelete_index)->next && strcmp(x->word, (*toDelete_index)->next->word) > 0) {
+            /*if (streq(index->word, x->word, k)) {
+                found = 1;
+                break;
+            }*/
+            *toDelete_index = (*toDelete_index)->next;
+        }
+        //if (!found) {
+        //printf("Adding %s", x->word);
+        char head_changed = 0;
+        if (*toDelete_index == *toDelete_head) head_changed = 1;
+        if (!*toDelete_index) {
+            *toDelete_index = malloc(sizeof(list_node_t));
+            (*toDelete_index)->next = NULL;
+            (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((*toDelete_index)->word, x->word);
+        } else if (!(*toDelete_index)->next && strcmp((*toDelete_index)->word, x->word) > 0) {
+            list_node_t *temp = *toDelete_index;
+            *toDelete_index = malloc(sizeof(list_node_t));
+            (*toDelete_index)->next = temp;
+            (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((*toDelete_index)->word, x->word);
+        } else if ((!(*toDelete_index)->next && strcmp((*toDelete_index)->word, x->word) < 0) ||
+                   ((*toDelete_index)->next && strcmp((*toDelete_index)->next->word, x->word) != 0)) {
+            list_node_t *new = malloc(sizeof(list_node_t));
+            new->next = (*toDelete_index)->next;
+            new->word = malloc(sizeof(char[k]) + 1);
+            strcpy(new->word, x->word);
+            (*toDelete_index)->next = new;
+        }
+        if (head_changed) *toDelete_head = *toDelete_index;
     }
-    find_with(tree, x->left, c, occ, toDelete);
-    find_with(tree, x->right, c, occ, toDelete);
+    find_with(tree, x->right, c, occ, toDelete_head, toDelete_index);
 }
 
-void find_with_min_occ(const RB_tree *tree, node_t *x, char c, int min, list *toDelete) {
+void find_with_min_occ(const RB_tree *tree, node_t *x, char c, int min, list *toDelete_head, list *toDelete_index) {
     if (x == tree->nil) return;
+    find_with_min_occ(tree, x->left, c, min, toDelete_head, toDelete_index);
     int count = 0;
     for (int i = 0; i < k; i++) {
         if (x->word[i] == c)
             count++;
     }
     if (count < min) {
-        //list_node_t *index = *toDelete;
         //char found = 0;
-        /*while (index) {
-            if (streq(index->word, x->word, k)) {
+        while (*toDelete_index && (*toDelete_index)->next && strcmp(x->word, (*toDelete_index)->next->word) > 0) {
+            /*if (streq(index->word, x->word, k)) {
                 found = 1;
                 break;
-            }
-            index = index->next;
-        }*/
+            }*/
+            *toDelete_index = (*toDelete_index)->next;
+        }
         //if (!found) {
         //printf("Adding %s", x->word);
-        list_node_t *temp = *toDelete;
-        *toDelete = malloc(sizeof(list_node_t));
-        (*toDelete)->next = temp;
-        (*toDelete)->word = malloc(sizeof(char[k]) + 1);
-        strcpy((*toDelete)->word, x->word);
-        //}
+        char head_changed = 0;
+        if (*toDelete_index == *toDelete_head) head_changed = 1;
+        if (!*toDelete_index) {
+            *toDelete_index = malloc(sizeof(list_node_t));
+            (*toDelete_index)->next = NULL;
+            (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((*toDelete_index)->word, x->word);
+        } else if (!(*toDelete_index)->next && strcmp((*toDelete_index)->word, x->word) > 0) {
+            list_node_t *temp = *toDelete_index;
+            *toDelete_index = malloc(sizeof(list_node_t));
+            (*toDelete_index)->next = temp;
+            (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
+            strcpy((*toDelete_index)->word, x->word);
+        } else if ((!(*toDelete_index)->next && strcmp((*toDelete_index)->word, x->word) < 0) ||
+                   ((*toDelete_index)->next && strcmp((*toDelete_index)->next->word, x->word) != 0)) {
+            list_node_t *new = malloc(sizeof(list_node_t));
+            new->next = (*toDelete_index)->next;
+            new->word = malloc(sizeof(char[k]) + 1);
+            strcpy(new->word, x->word);
+            (*toDelete_index)->next = new;
+        }
+        if (head_changed) *toDelete_head = *toDelete_index;
     }
-    find_with_min_occ(tree, x->left, c, min, toDelete);
-    find_with_min_occ(tree, x->right, c, min, toDelete);
+    find_with_min_occ(tree, x->right, c, min, toDelete_head, toDelete_index);
 }
 
 
@@ -461,30 +580,36 @@ void apply_filters(RB_tree *filtered_tree, const char *in_at, /*const char not_i
         return;
     }
 
-    list toDelete = NULL;
+    list head = NULL;
+    list index = head;
+
     for (int i = 0; i < k; i++) {
         if (in_at[i] >= 0) {
             char c = in_at[i];
-            find_without_at(filtered_tree, filtered_tree->root, c, i, &toDelete);
+            find_without_at(filtered_tree, filtered_tree->root, c, i, &head, &index);
+            index = head;
         }
 
         for (int j = 0; j < ALPHABET_LENGTH; j++) {
             if (not_in_at[i][j]) {
                 char c = dehash(j);
-                find_with_at(filtered_tree, filtered_tree->root, c, i, &toDelete);
+                find_with_at(filtered_tree, filtered_tree->root, c, i, &head, &index);
+                index = head;
             }
         }
     }
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
         if (occ[i] >= 0) {
             char c = dehash(i);
-            find_with(filtered_tree, filtered_tree->root, c, occ[i], &toDelete);
+            find_with(filtered_tree, filtered_tree->root, c, occ[i], &head, &index);
+            index = head;
         } else if (min_occ[i] > 0) {
             char c = dehash(i);
-            find_with_min_occ(filtered_tree, filtered_tree->root, c, min_occ[i], &toDelete);
+            find_with_min_occ(filtered_tree, filtered_tree->root, c, min_occ[i], &head, &index);
+            index = head;
         }
     }
-    delete_in(filtered_tree, &toDelete);
+    delete_in(filtered_tree, &head);
 }
 
 /*
