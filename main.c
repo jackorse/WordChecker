@@ -320,8 +320,7 @@ node_t *copy(const RB_tree *tree, const node_t *x, node_t *p) {
         node_t *node = malloc(sizeof(node_t));
         node->color = x->color;
         node->parent = p;
-        node->word = malloc(sizeof(char[k]) + 1);
-        strcpy(node->word, x->word);
+        node->word = x->word;
         node->left = copy(tree, x->left, node);
         node->right = copy(tree, x->right, node);
         return node;
@@ -500,7 +499,7 @@ void delete_in(RB_tree *tree, hash_table toDelete) {
             if (index->ptr != tree->nil) {
                 node_t *t = delete(tree, index->ptr);
                 assert(t == index->ptr);
-                free(t->word);
+                //free(t->word);
                 free(t);
             }
             index = index->next;
@@ -645,7 +644,7 @@ void destroy(RB_tree *tree, node_t *x) {
         //free(tree->nil->word);
         free(tree->nil);
     }
-    free(x->word);
+    //free(x->word);
     free(x);
 }
 
