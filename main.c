@@ -8,7 +8,12 @@
 #define RED 0
 #define BLACK 1
 #define ALPHABET_LENGTH 64
-#define HASH_TABLE_LENGTH 1000
+#define MIN_HASH_TABLE_LENGTH 50
+#define MAX_HASH_TABLE_LENGTH 100000
+#define HASH_TABLE_LENGTH_FACTOR 11
+
+
+int hash_table_length;
 
 typedef struct node {
     struct node *parent;
@@ -335,8 +340,6 @@ typedef struct list_node {
 } list_node_t;
 typedef list_node_t *list;
 
-typedef list hash_table[HASH_TABLE_LENGTH];
-
 
 static inline int streq(const char *s1, const char *s2, int l) {
     for (l = l - 1; l >= 0; l--) {
@@ -347,11 +350,11 @@ static inline int streq(const char *s1, const char *s2, int l) {
 }
 
 static inline int _hash(node_t *ptr) {
-    return (((uintptr_t) ptr) >> 8) % HASH_TABLE_LENGTH;
+    return (((uintptr_t) ptr) >> 8) % hash_table_length;
 }
 
 
-static inline void add_to_del_list(hash_table toDelete, node_t *ptr) {
+static inline void add_to_del_list(list toDelete[hash_table_length], node_t *ptr) {
     int hash = _hash(ptr);
     list index = toDelete[hash];
     while (index && index->next && ptr > index->next->ptr) {
@@ -377,7 +380,7 @@ static inline void add_to_del_list(hash_table toDelete, node_t *ptr) {
     }
 }
 
-void find_without_at(const RB_tree *const tree, node_t *x, char c, int pos, hash_table toDelete) {
+void find_without_at(const RB_tree *const tree, node_t *x, char c, int pos, list toDelete[hash_table_length]) {
     if (x == tree->nil) return;
     find_without_at(tree, x->left, c, pos, toDelete);
     if (x->word[pos] != c) {
@@ -410,7 +413,7 @@ void find_without_at(const RB_tree *const tree, node_t *x, char c, int pos, hash
     find_without_at(tree, x->right, c, pos, toDelete);
 }
 
-void find_with_at(const RB_tree *const tree, node_t *x, char c, int pos, hash_table toDelete) {
+void find_with_at(const RB_tree *const tree, node_t *x, char c, int pos, list toDelete[hash_table_length]) {
     if (x == tree->nil) return;
     find_with_at(tree, x->left, c, pos, toDelete);
     if (x->word[pos] == c) {
@@ -435,7 +438,7 @@ void find_with_at(const RB_tree *const tree, node_t *x, char c, int pos, hash_ta
     find_with_at(tree, x->right, c, pos, toDelete);
 }
 
-void find_with(const RB_tree *const tree, node_t *x, char c, int occ, hash_table toDelete) {
+void find_with(const RB_tree *const tree, node_t *x, char c, int occ, list toDelete[hash_table_length]) {
     if (x == tree->nil) return;
     find_with(tree, x->left, c, occ, toDelete);
     int count = 0;
@@ -466,7 +469,7 @@ void find_with(const RB_tree *const tree, node_t *x, char c, int occ, hash_table
     find_with(tree, x->right, c, occ, toDelete);
 }
 
-void find_with_min_occ(const RB_tree *const tree, node_t *x, char c, int min, hash_table toDelete) {
+void find_with_min_occ(const RB_tree *const tree, node_t *x, char c, int min, list toDelete[hash_table_length]) {
     if (x == tree->nil) return;
     find_with_min_occ(tree, x->left, c, min, toDelete);
     int count = 0;
@@ -495,9 +498,9 @@ int free_list(list l) {
     return length;
 }
 
-void delete_in(RB_tree *tree, hash_table toDelete) {
+void delete_in(RB_tree *tree, list toDelete[hash_table_length]) {
     int min = INT_MAX, max = 0;
-    for (int i = 0; i < HASH_TABLE_LENGTH; i++) {
+    for (int i = 0; i < hash_table_length; i++) {
         list_node_t *index = toDelete[i];
         while (index) {
             //node_t *t = search(tree->root, index->word);
@@ -570,8 +573,9 @@ void apply_filters(RB_tree *const filtered_tree,
         return;
     }
 
-
-    hash_table to_delete = {NULL};
+    list to_delete[hash_table_length];
+    for (int i = 0; i < hash_table_length; i++)
+        to_delete[i] = NULL;
 
     for (int i = 0; i < k; i++) {
         if (in_at[i] >= 0) {
@@ -581,7 +585,7 @@ void apply_filters(RB_tree *const filtered_tree,
         }
 
         for (int j = 0; j < ALPHABET_LENGTH; j++) {
-            if (not_in_at[i][j]) {
+            if (not_in_at[i][j] && occ[j] != 0) {
                 char c = dehash(j);
                 find_with_at(filtered_tree, filtered_tree->root, c, i, to_delete);
                 delete_in(filtered_tree, to_delete);
@@ -658,6 +662,9 @@ void destroy(RB_tree *tree, node_t *x) {
 
 void nuova_partita() {
     char ref_word[k + 1];
+    hash_table_length = count(&dictionary, dictionary.root) / HASH_TABLE_LENGTH_FACTOR;
+    if (hash_table_length < MIN_HASH_TABLE_LENGTH)hash_table_length = MIN_HASH_TABLE_LENGTH;
+    if (hash_table_length > MAX_HASH_TABLE_LENGTH)hash_table_length = MAX_HASH_TABLE_LENGTH;
     //char not_in[ALPHABET_LENGTH] = {0};
     char min_occ[ALPHABET_LENGTH] = {0};
     char occ[ALPHABET_LENGTH];
@@ -755,7 +762,11 @@ void nuova_partita() {
                 for (int j = 0; j < k; j++) {
                     printf("%c", res[j]);
                 }
-                printf("\n%d\n", count(&filtered_tree, filtered_tree.root));
+                int c = count(&filtered_tree, filtered_tree.root);
+                printf("\n%d\n", c);
+                hash_table_length = c / HASH_TABLE_LENGTH_FACTOR;
+                if (hash_table_length < MIN_HASH_TABLE_LENGTH)hash_table_length = MIN_HASH_TABLE_LENGTH;
+                if (hash_table_length > MAX_HASH_TABLE_LENGTH)hash_table_length = MAX_HASH_TABLE_LENGTH;
                 n--;
             } else {
                 printf("not_exists\n");
@@ -772,7 +783,7 @@ int main() {
     dictionary.nil->color = BLACK;
     dictionary.root = dictionary.nil;
     node_t *x;
-    setvbuf(stdout, NULL, _IONBF, 0);
+    //setvbuf(stdout, NULL, _IONBF, 0);
     if (scanf("%d", &k)) {
         char adding_words = 1;
         while (1) {
