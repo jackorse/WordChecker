@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdint-gcc.h>
+#include <limits.h>
 
 #define RED 0
 #define BLACK 1
@@ -482,16 +483,20 @@ void find_with_min_occ(const RB_tree *const tree, node_t *x, char c, int min, ha
 }
 
 
-void free_list(list l) {
+int free_list(list l) {
     list_node_t *temp;
+    int length = 0;
     while (l) {
         temp = l;
         l = temp->next;
         free(temp);
+        length++;
     }
+    return length;
 }
 
 void delete_in(RB_tree *tree, hash_table toDelete) {
+    int min = INT_MAX, max = 0;
     for (int i = 0; i < HASH_TABLE_LENGTH; i++) {
         list_node_t *index = toDelete[i];
         while (index) {
@@ -504,9 +509,12 @@ void delete_in(RB_tree *tree, hash_table toDelete) {
             }
             index = index->next;
         }
-        free_list(toDelete[i]);
+        int l = free_list(toDelete[i]);
+        if (l < min) min = l;
+        if (l > max)max = l;
         toDelete[i] = NULL;
     }
+    //printf("MIN: %d, MAX: %d\n", min, max);
 }
 
 void inserisci_inizio(RB_tree *dict) {
@@ -518,15 +526,15 @@ void inserisci_inizio(RB_tree *dict) {
             return;
         if (strlen(read) == k) {
             char *new_dict_word = malloc(sizeof(char[k + 1]));
-            char *new_filtered_word = malloc(sizeof(char[k + 1]));
+            //char *new_filtered_word = malloc(sizeof(char[k + 1]));
             strcpy(new_dict_word, read);
-            strcpy(new_filtered_word, read);
+            //strcpy(new_filtered_word, read);
             new_dict = malloc(sizeof(node_t));
             new_filtered = malloc(sizeof(node_t));
             new_dict->word = new_dict_word;
             new_dict->left = dictionary.nil;
             new_dict->right = dictionary.nil;
-            new_filtered->word = new_filtered_word;
+            new_filtered->word = new_dict_word;
             new_filtered->left = dict->nil;
             new_filtered->right = dict->nil;
             insert(&dictionary, new_dict);
@@ -766,12 +774,17 @@ int main() {
     node_t *x;
     setvbuf(stdout, NULL, _IONBF, 0);
     if (scanf("%d", &k)) {
+        char adding_words = 1;
         while (1) {
             char temp[256];
             if (scanf("%s", temp) < 0)break;
             if (_strcmp(temp, "+nuova_partita") == 0)
                 nuova_partita();
-            if (strlen(temp) == k) {
+            else if (_strcmp(temp, "+inserisci_inizio") == 0)
+                adding_words = 1;
+            else if (_strcmp(temp, "+inserisci_fine") == 0)
+                adding_words = 0;
+            else if (strlen(temp) == k && adding_words) {
                 char *c = malloc(sizeof(char[k + 1]));
                 strcpy(c, temp);
                 x = malloc(sizeof(node_t));
