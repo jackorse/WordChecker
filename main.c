@@ -22,6 +22,37 @@ typedef struct tree {
 int k;
 RB_tree dictionary;
 
+static inline int _strcmp(const char s1[k], const char s2[k]) {
+    /*for (int i = 0; i < k; i++) {
+        if (s1[i] != s2[i])
+            return s1[i] - s2[i];
+    }
+    return 0;*/
+    return strcmp(s1, s2);
+}
+
+void check_tree(const node_t *x) {
+    if (!x)return;
+    if (x->left == NULL && x->right != NULL) {
+        printf("NOOO");
+    }
+
+    check_tree(x->left);
+    check_tree(x->right);
+}
+
+int compare_tree(const node_t *x1, const node_t *x2) {
+    if (!x1 && !x2)return 0;
+    if (!x1->word && !x2->word)return 0;
+    if (strcmp(x1->word, x2->word) != 0) {
+        return 1;
+    }
+    if (x1->color != x2->color) {
+        return 1;
+    }
+    return compare_tree(x1->left, x2->left) + compare_tree(x1->right, x2->right);
+}
+
 void left_rotate(RB_tree *tree, node_t *x) {
     node_t *y = x->right;
     x->right = y->left; //il sottoalbero sinistro di y diventa quello destro di x
@@ -104,7 +135,7 @@ void insert(RB_tree *tree, node_t *z) {
     node_t *x = tree->root; // nodo considerato
     while (x != tree->nil) {
         y = x;
-        if (strcmp(z->word, x->word) < 0)
+        if (_strcmp(z->word, x->word) < 0)
             x = x->left;
         else
             x = x->right;
@@ -112,7 +143,7 @@ void insert(RB_tree *tree, node_t *z) {
     z->parent = y;
     if (y == tree->nil)
         tree->root = z; //l'albero T e' vuoto
-    else if (strcmp(z->word, y->word) < 0)
+    else if (_strcmp(z->word, y->word) < 0)
         y->left = z;
     else
         y->right = z;
@@ -143,9 +174,9 @@ char *readWord(int n) {
 }*/
 
 node_t *search(node_t *x, char *word) {
-    if (!x->word || strcmp(word, x->word) == 0)
+    if (!x->word || _strcmp(word, x->word) == 0)
         return x;
-    if (strcmp(word, x->word) < 0)
+    if (_strcmp(word, x->word) < 0)
         return search(x->left, word);
     else return search(x->right, word);
 }
@@ -176,16 +207,13 @@ void delete_fixup(RB_tree *tree, node_t *x) {
             w->color = BLACK; // Caso 1
             x->parent->color = RED; // Caso 1
             left_rotate(tree, x->parent);// Caso 1
-            w = x->parent->right;
-        }// Caso 1
-        char lcolor = BLACK, rcolor = BLACK;
-        if (w->left) lcolor = w->left->color;
-        if (w->right) rcolor = w->right->color;
-        if (lcolor == BLACK && rcolor == BLACK) {
+            w = x->parent->right;// Caso 1
+        }
+        if (w->left->color == BLACK && w->right->color == BLACK) {
             w->color = RED; // Caso 2
             delete_fixup(tree, x->parent); // Caso 2
         } else {
-            if (rcolor == BLACK) {
+            if (w->right->color == BLACK) {
                 w->left->color = BLACK; // Caso 3
                 w->color = RED; // Caso 3
                 right_rotate(tree, w); // Caso 3
@@ -193,7 +221,7 @@ void delete_fixup(RB_tree *tree, node_t *x) {
             }
             w->color = x->parent->color; // Caso 4
             x->parent->color = BLACK; // Caso 4
-            if (w->right)w->right->color = BLACK; // Caso 4
+            w->right->color = BLACK; // Caso 4
             left_rotate(tree, x->parent); // Caso 4
         }
     } else {
@@ -204,14 +232,11 @@ void delete_fixup(RB_tree *tree, node_t *x) {
             right_rotate(tree, x->parent);// Caso 1
             w = x->parent->left;
         }// Caso 1
-        char lcolor = BLACK, rcolor = BLACK;
-        if (w->left) lcolor = w->left->color;
-        if (w->right) rcolor = w->right->color;
-        if (rcolor == BLACK && lcolor == BLACK) {
+        if (w->right->color == BLACK && w->left->color == BLACK) {
             w->color = RED; // Caso 2
             delete_fixup(tree, x->parent); // Caso 2
         } else {
-            if (lcolor == BLACK) {
+            if (w->left->color == BLACK) {
                 w->right->color = BLACK; // Caso 3
                 w->color = RED; // Caso 3
                 left_rotate(tree, w); // Caso 3
@@ -219,12 +244,13 @@ void delete_fixup(RB_tree *tree, node_t *x) {
             }
             w->color = x->parent->color; // Caso 4
             x->parent->color = BLACK; // Caso 4
-            if (w->left)w->left->color = BLACK; // Caso 4
+            w->left->color = BLACK; // Caso 4
             right_rotate(tree, x->parent); // Caso 4
         }
     }
 }
 
+/*
 node_t *delete(RB_tree *T, node_t *z) {
     node_t *y;
     if (z->left == T->nil || z->right == T->nil)
@@ -235,7 +261,7 @@ node_t *delete(RB_tree *T, node_t *z) {
     if (y->left != T->nil)
         x = y->left;
     else x = y->right;
-    /*if (x) */x->parent = y->parent; // x potrebbe essere T.nil;
+    x->parent = y->parent; // x potrebbe essere T.nil;
     if (y->parent == T->nil)
         T->root = x;
     else if (y == y->parent->left)
@@ -247,6 +273,43 @@ node_t *delete(RB_tree *T, node_t *z) {
     if (y->color == BLACK && x)
         delete_fixup(T, x);
     return y;
+}*/
+
+node_t *delete(RB_tree *T, node_t *z) {
+    node_t *y;
+    if (z->left == T->nil || z->right == T->nil)
+        y = z;
+    else
+        y = tree_successor(z);
+    node_t *x;
+    if (y->left != T->nil)
+        x = y->left;
+    else x = y->right;
+    x->parent = y->parent; // x potrebbe essere T.nil;
+    if (y->parent == T->nil)
+        T->root = x;
+    else if (y == y->parent->left)
+        y->parent->left = x;
+    else y->parent->right = x;
+    char y_color = y->color;;
+    if (y != z) {
+        if (z->parent == T->nil)
+            T->root = y;
+        else if (z == z->parent->left)
+            z->parent->left = y;
+        else z->parent->right = y;
+        y->parent = z->parent;
+        y->left = z->left;
+        y->left->parent = y;
+        y->right = z->right;
+        y->right->parent = y;
+        y->color = z->color;
+        //strcpy(z->word, y->word);
+    }
+    //y->word = "DELET";
+    if (y_color == BLACK)
+        delete_fixup(T, x);
+    return z;
 }
 
 node_t *copy(const RB_tree *tree, const node_t *x, node_t *p) {
@@ -280,7 +343,7 @@ static inline int streq(const char *s1, const char *s2, int l) {
 
 
 static inline void add_to_del_list(list *toDelete_head, list *toDelete_index, char word[k + 1]) {
-    while (*toDelete_index && (*toDelete_index)->next && strcmp(word, (*toDelete_index)->next->word) > 0) {
+    while (*toDelete_index && (*toDelete_index)->next && _strcmp(word, (*toDelete_index)->next->word) > 0) {
         /*if (streq(index->word, x->word, k)) {
             found = 1;
             break;
@@ -296,14 +359,14 @@ static inline void add_to_del_list(list *toDelete_head, list *toDelete_index, ch
         (*toDelete_index)->next = NULL;
         (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
         strcpy((*toDelete_index)->word, word);
-    } else if (!(*toDelete_index)->next && strcmp((*toDelete_index)->word, word) > 0) {
+    } else if (!(*toDelete_index)->next && _strcmp((*toDelete_index)->word, word) > 0) {
         list_node_t *temp = *toDelete_index;
         *toDelete_index = malloc(sizeof(list_node_t));
         (*toDelete_index)->next = temp;
         (*toDelete_index)->word = malloc(sizeof(char[k]) + 1);
         strcpy((*toDelete_index)->word, word);
-    } else if ((!(*toDelete_index)->next && strcmp((*toDelete_index)->word, word) < 0) ||
-               ((*toDelete_index)->next && strcmp((*toDelete_index)->next->word, word) != 0)) {
+    } else if ((!(*toDelete_index)->next && _strcmp((*toDelete_index)->word, word) < 0) ||
+               ((*toDelete_index)->next && _strcmp((*toDelete_index)->next->word, word) != 0)) {
         list_node_t *new = malloc(sizeof(list_node_t));
         new->next = (*toDelete_index)->next;
         new->word = malloc(sizeof(char[k]) + 1);
@@ -313,7 +376,7 @@ static inline void add_to_del_list(list *toDelete_head, list *toDelete_index, ch
     if (head_changed) *toDelete_head = *toDelete_index;
 }
 
-void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete_head, list *toDelete_index) {
+void find_without_at(const RB_tree *const tree, node_t *x, char c, int pos, list *toDelete_head, list *toDelete_index) {
     if (x == tree->nil) return;
     find_without_at(tree, x->left, c, pos, toDelete_head, toDelete_index);
     if (x->word[pos] != c) {
@@ -346,7 +409,7 @@ void find_without_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDe
     find_without_at(tree, x->right, c, pos, toDelete_head, toDelete_index);
 }
 
-void find_with_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelete_head, list *toDelete_index) {
+void find_with_at(const RB_tree *const tree, node_t *x, char c, int pos, list *toDelete_head, list *toDelete_index) {
     if (x == tree->nil) return;
     find_with_at(tree, x->left, c, pos, toDelete_head, toDelete_index);
     if (x->word[pos] == c) {
@@ -371,7 +434,7 @@ void find_with_at(const RB_tree *tree, node_t *x, char c, int pos, list *toDelet
     find_with_at(tree, x->right, c, pos, toDelete_head, toDelete_index);
 }
 
-void find_with(const RB_tree *tree, node_t *x, char c, int occ, list *toDelete_head, list *toDelete_index) {
+void find_with(const RB_tree *const tree, node_t *x, char c, int occ, list *toDelete_head, list *toDelete_index) {
     if (x == tree->nil) return;
     find_with(tree, x->left, c, occ, toDelete_head, toDelete_index);
     int count = 0;
@@ -402,7 +465,8 @@ void find_with(const RB_tree *tree, node_t *x, char c, int occ, list *toDelete_h
     find_with(tree, x->right, c, occ, toDelete_head, toDelete_index);
 }
 
-void find_with_min_occ(const RB_tree *tree, node_t *x, char c, int min, list *toDelete_head, list *toDelete_index) {
+void
+find_with_min_occ(const RB_tree *const tree, node_t *x, char c, int min, list *toDelete_head, list *toDelete_index) {
     if (x == tree->nil) return;
     find_with_min_occ(tree, x->left, c, min, toDelete_head, toDelete_index);
     int count = 0;
@@ -449,7 +513,7 @@ void inserisci_inizio(RB_tree *dict) {
     while (1) {
         char read[256];
         if (scanf("%s", read) < 0)break;
-        if (strcmp(read, "+inserisci_fine") == 0)
+        if (_strcmp(read, "+inserisci_fine") == 0)
             return;
         if (strlen(read) == k) {
             char *new_dict_word = malloc(sizeof(char[k + 1]));
@@ -488,7 +552,8 @@ static inline char dehash(int i) {
     return -1;
 }
 
-void apply_filters(RB_tree *filtered_tree, const char *in_at, /*const char not_in[ALPHABET_LENGTH],*/
+void apply_filters(RB_tree *const filtered_tree,
+                   const char *in_at, /*const char not_in[ALPHABET_LENGTH],*/
                    const char min_occ[ALPHABET_LENGTH], const char occ[ALPHABET_LENGTH],
                    const char not_in_at[k][ALPHABET_LENGTH]) {
     if (!filtered_tree->root) {
@@ -603,19 +668,22 @@ void nuova_partita() {
     filtered_tree.nil = malloc(sizeof(node_t));
     filtered_tree.nil->word = NULL;
     filtered_tree.nil->color = BLACK;
+    filtered_tree.nil->left = NULL;
+    filtered_tree.nil->right = NULL;
+    filtered_tree.nil->parent = NULL;
     filtered_tree.root = filtered_tree.nil;
     filtered_tree.root = copy(&filtered_tree, dictionary.root, filtered_tree.nil);
     //printTree(filtered_tree);
     while (n > 0) {
         char input[256];
         if (scanf("%s", input) < 0)break;
-        if (strcmp(input, "+stampa_filtrate") == 0)
+        if (_strcmp(input, "+stampa_filtrate") == 0)
             printTree(filtered_tree.root);
-        else if (strcmp(input, "+inserisci_inizio") == 0) {
+        else if (_strcmp(input, "+inserisci_inizio") == 0) {
             inserisci_inizio(&filtered_tree);
             apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at);
         } else if (strlen(input) == k) {
-            if (strcmp(input, ref_word) == 0) {
+            if (_strcmp(input, ref_word) == 0) {
                 printf("ok\n");
                 destroy(&filtered_tree, filtered_tree.root);
                 return;
@@ -701,7 +769,7 @@ int main() {
         while (1) {
             char temp[256];
             if (scanf("%s", temp) < 0)break;
-            if (strcmp(temp, "+nuova_partita") == 0)
+            if (_strcmp(temp, "+nuova_partita") == 0)
                 nuova_partita();
             if (strlen(temp) == k) {
                 char *c = malloc(sizeof(char[k + 1]));
