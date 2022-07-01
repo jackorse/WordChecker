@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <stdint-gcc.h>
+#include <stdint.h>
 #include <limits.h>
 
 #define RED 0
@@ -439,8 +439,7 @@ void find_with_at(const RB_tree *const tree, node_t *x, char c, int pos, list to
 }
 
 void find_with(const RB_tree *const tree, node_t *x, char c, int occ, list toDelete[hash_table_length]) {
-    if (x == tree->nil) return;
-    find_with(tree, x->left, c, occ, toDelete);
+    if (x->left != tree->nil)find_with(tree, x->left, c, occ, toDelete);
     int count = 0;
     for (int i = 0; i < k; i++) {
         if (x->word[i] == c)
@@ -466,7 +465,7 @@ void find_with(const RB_tree *const tree, node_t *x, char c, int occ, list toDel
 
         add_to_del_list(toDelete, x);
     }
-    find_with(tree, x->right, c, occ, toDelete);
+    if (x->right != tree->nil) find_with(tree, x->right, c, occ, toDelete);
 }
 
 void find_with_min_occ(const RB_tree *const tree, node_t *x, char c, int min, list toDelete[hash_table_length]) {
@@ -499,7 +498,7 @@ int free_list(list l) {
 }
 
 void delete_in(RB_tree *tree, list toDelete[hash_table_length]) {
-    int min = INT_MAX, max = 0;
+    int min = INT_MAX, max = 0, count = 0;
     for (int i = 0; i < hash_table_length; i++) {
         list_node_t *index = toDelete[i];
         while (index) {
@@ -511,6 +510,7 @@ void delete_in(RB_tree *tree, list toDelete[hash_table_length]) {
                 free(t);
             }
             index = index->next;
+            count++;
         }
         int l = free_list(toDelete[i]);
         if (l < min) min = l;
@@ -567,15 +567,13 @@ static inline char dehash(int i) {
 void apply_filters(RB_tree *const filtered_tree,
                    const char *in_at, /*const char not_in[ALPHABET_LENGTH],*/
                    const char min_occ[ALPHABET_LENGTH], const char occ[ALPHABET_LENGTH],
-                   const char not_in_at[k][ALPHABET_LENGTH]) {
+                   const char not_in_at[k][ALPHABET_LENGTH],
+                   list to_delete[hash_table_length]) {
     if (!filtered_tree->root) {
         printf("filtered_tree null!!!");
         return;
     }
 
-    list to_delete[hash_table_length];
-    for (int i = 0; i < hash_table_length; i++)
-        to_delete[i] = NULL;
 
     for (int i = 0; i < k; i++) {
         if (in_at[i] >= 0) {
@@ -668,13 +666,25 @@ void nuova_partita() {
     //char not_in[ALPHABET_LENGTH] = {0};
     char min_occ[ALPHABET_LENGTH] = {0};
     char occ[ALPHABET_LENGTH];
+    char occ_applied[ALPHABET_LENGTH];
     char in_at[k];
+    char in_at_applied[k];
     char not_in_at[k][ALPHABET_LENGTH];
-    for (int i = 0; i < k; i++) in_at[i] = -1;
-    for (int i = 0; i < ALPHABET_LENGTH; i++) occ[i] = -1;
-    for (int i = 0; i < k; i++)
-        for (int j = 0; j < ALPHABET_LENGTH; j++)
+    char not_in_at_applied[k][ALPHABET_LENGTH];
+    for (int i = 0; i < k; i++) {
+        in_at[i] = -1;
+        in_at_applied[i] = 0;
+    }
+    for (int i = 0; i < ALPHABET_LENGTH; i++) {
+        occ[i] = -1;
+        occ_applied[i] = 0;
+    }
+    for (int i = 0; i < k; i++) {
+        for (int j = 0; j < ALPHABET_LENGTH; j++) {
             not_in_at[i][j] = 0;
+            not_in_at_applied[i][j] = 0;
+        }
+    }
 
     if (!scanf("%s", ref_word)) return;
     int n;
@@ -690,19 +700,23 @@ void nuova_partita() {
     filtered_tree.root = copy(&filtered_tree, dictionary.root, filtered_tree.nil);
     //printTree(filtered_tree);
     while (n > 0) {
+        list to_delete[hash_table_length];
+        for (int i = 0; i < hash_table_length; i++)
+            to_delete[i] = NULL;
+
         char input[256];
         if (scanf("%s", input) < 0)break;
         if (_strcmp(input, "+stampa_filtrate") == 0)
             printTree(filtered_tree.root);
         else if (_strcmp(input, "+inserisci_inizio") == 0) {
             inserisci_inizio(&filtered_tree);
-            apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at);
+            apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at, to_delete);
         } else if (strlen(input) == k) {
             if (_strcmp(input, ref_word) == 0) {
                 printf("ok\n");
                 destroy(&filtered_tree, filtered_tree.root);
                 return;
-            } else if (search(dictionary.root, input) != dictionary.nil) {      //O(logn)
+            } else if (search(dictionary.root, input) != dictionary.nil) {
                 char _min_occ[ALPHABET_LENGTH] = {0};
                 char res[k];
                 char used[k];
@@ -711,11 +725,16 @@ void nuova_partita() {
                     used[i] = 0;
                 }
                 //list toDelete = NULL;
-                for (int j = 0; j < k; j++) {                                            //O(k)
+                for (int j = 0; j < k; j++) {
                     if (ref_word[j] == input[j]) {
                         res[j] = '+';
                         used[j] = 1;
                         in_at[j] = input[j];
+                        if (!in_at_applied[j]) {
+                            find_without_at(&filtered_tree, filtered_tree.root, input[j], j, to_delete);
+                            delete_in(&filtered_tree, to_delete);
+                            in_at_applied[j] = 1;
+                        }
                         //find_without_at(filtered_tree, input[j], j, &toDelete);
                         /*printf("To delete:\n");
                         while (toDelete) {
@@ -728,7 +747,7 @@ void nuova_partita() {
                 }
                 //apply_filter_in_at(&filtered_tree, in_at, k);
 
-                for (int j = 0; j < k; j++) {                                               //O(k^2)
+                for (int j = 0; j < k; j++) {
                     if (res[j] != '+') {
                         int found = 0;
 
@@ -740,16 +759,40 @@ void nuova_partita() {
                                 found = 1;
                                 _min_occ[hash(input[j])]++;
                                 not_in_at[j][hash(input[j])] = 1;
+
+                                if (!not_in_at_applied[j][hash(input[j])]) {
+                                    find_with_at(&filtered_tree, filtered_tree.root, input[j], j, to_delete);
+                                    delete_in(&filtered_tree, to_delete);
+                                    not_in_at_applied[j][hash(input[j])] = 1;
+                                }
                                 break;
                             }
                         }
-                        if (_min_occ[hash(input[j])] > min_occ[hash(input[j])])
+                        if (_min_occ[hash(input[j])] > min_occ[hash(input[j])]) {
                             min_occ[hash(input[j])] = _min_occ[hash(input[j])];
+                            if (min_occ[hash(input[j])] > 0) {
+                                find_with_min_occ(&filtered_tree, filtered_tree.root, input[j], min_occ[hash(input[j])],
+                                                  to_delete);
+                                delete_in(&filtered_tree, to_delete);
+                            }
+                        }
                         if (!found) {
                             res[j] = '/';
                             //not_in[hash(input[j])] = 1;
                             not_in_at[j][hash(input[j])] = 1;
                             occ[hash(input[j])] = min_occ[hash(input[j])];
+
+                            if (!not_in_at_applied[j][hash(input[j])] && occ[hash(input[j])] != 0) {
+                                find_with_at(&filtered_tree, filtered_tree.root, input[j], j, to_delete);
+                                delete_in(&filtered_tree, to_delete);
+                                not_in_at_applied[j][hash(input[j])] = 1;
+                            }
+
+                            if (!occ_applied[hash(input[j])] && occ[hash(input[j])] >= 0) {
+                                find_with(&filtered_tree, filtered_tree.root, input[j], occ[hash(input[j])], to_delete);
+                                delete_in(&filtered_tree, to_delete);
+                                occ_applied[hash(input[j])] = 1;
+                            }
                             //find_with(filtered_tree, input[j], &toDelete);
                             //delete_in(&filtered_tree, &toDelete);
                         }
@@ -757,7 +800,7 @@ void nuova_partita() {
                 }
                 //apply_filter_not_in(&filtered_tree, not_in);
                 //apply_filter_min_occ(&filtered_tree, min_occ,k);
-                apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at);
+                //apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at, to_delete);
 
                 for (int j = 0; j < k; j++) {
                     printf("%c", res[j]);
