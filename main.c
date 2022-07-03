@@ -357,26 +357,27 @@ static inline int _hash(node_t *ptr) {
 static inline void add_to_del_list(list toDelete[hash_table_length], node_t *ptr) {
     int hash = _hash(ptr);
     list index = toDelete[hash];
-    while (index && index->next && ptr > index->next->ptr) {
+    list_node_t *prev = NULL;
+    while (index && ptr > index->ptr) {
         /*if (streq(index->word, x->word, k)) {
             found = 1;
             break;
         }*/
+        prev = index;
         index = index->next;
     }
     //if (!found) {
     //printf("Adding %s", x->word);
-    if (!index || (!index->next && index->ptr > ptr)) {
+    if (!prev) {
         list_node_t *temp = index;
         toDelete[hash] = malloc(sizeof(list_node_t));
         toDelete[hash]->next = temp;
         toDelete[hash]->ptr = ptr;
-    } else if ((!index->next && index->ptr < ptr) ||
-               (index->next && index->next->ptr != ptr)) {
+    } else {
         list_node_t *new = malloc(sizeof(list_node_t));
-        new->next = index->next;
+        new->next = index;
         new->ptr = ptr;
-        index->next = new;
+        prev->next = new;
     }
 }
 
@@ -599,9 +600,9 @@ void inserisci_inizio(RB_tree *dict, char in_at[k], char min_occ[ALPHABET_LENGTH
 
 /*
 void apply_filters(RB_tree *const filtered_tree,
-                   const char *in_at, const char not_in[ALPHABET_LENGTH],
-                   const char min_occ[ALPHABET_LENGTH], const char occ[ALPHABET_LENGTH],
-                   const char not_in_at[k][ALPHABET_LENGTH],
+                   const char *to_filter_in_at, const char not_in[ALPHABET_LENGTH],
+                   const char to_filter_min_occ[ALPHABET_LENGTH], const char occ[ALPHABET_LENGTH],
+                   const char to_filter_not_in_at[k][ALPHABET_LENGTH],
                    list to_delete[hash_table_length]) {
     if (!filtered_tree->root) {
         printf("filtered_tree null!!!");
@@ -610,14 +611,14 @@ void apply_filters(RB_tree *const filtered_tree,
 
 
     for (int i = 0; i < k; i++) {
-        if (in_at[i] >= 0) {
-            char c = in_at[i];
+        if (to_filter_in_at[i] >= 0) {
+            char c = to_filter_in_at[i];
             find_without_at(filtered_tree, filtered_tree->root, c, i, to_delete);
             delete_in(filtered_tree, to_delete);
         }
 
         for (int j = 0; j < ALPHABET_LENGTH; j++) {
-            if (not_in_at[i][j] && occ[j] != 0) {
+            if (to_filter_not_in_at[i][j] && occ[j] != 0) {
                 char c = dehash(j);
                 find_with_at(filtered_tree, filtered_tree->root, c, i, to_delete);
                 delete_in(filtered_tree, to_delete);
@@ -629,13 +630,97 @@ void apply_filters(RB_tree *const filtered_tree,
             char c = dehash(i);
             find_with(filtered_tree, filtered_tree->root, c, occ[i], to_delete);
             delete_in(filtered_tree, to_delete);
-        } else if (min_occ[i] > 0) {
+        } else if (to_filter_min_occ[i] > 0) {
             char c = dehash(i);
-            find_with_min_occ(filtered_tree, filtered_tree->root, c, min_occ[i], to_delete);
+            find_with_min_occ(filtered_tree, filtered_tree->root, c, to_filter_min_occ[i], to_delete);
             delete_in(filtered_tree, to_delete);
         }
     }
 }*/
+
+
+void apply_filters(RB_tree *filtered_tree, node_t *x,
+                   const char to_filter_occ[][2], const int new_occ,
+                   const char to_filter_in_at[][2], const int new_in_at,
+                   const char to_filter_min_occ[][2], const int new_min_occ,
+                   const char to_filter_not_in_at[][2], const int new_not_in_at,
+                   list to_delete[hash_table_length]) {
+
+    if (x == filtered_tree->nil)return;
+    if (x->left != filtered_tree->nil)
+        apply_filters(filtered_tree, x->left, to_filter_occ, new_occ, to_filter_in_at, new_in_at, to_filter_min_occ,
+                      new_min_occ, to_filter_not_in_at, new_not_in_at, to_delete);
+
+    for (int i = 0; i < k; i++) {
+
+        /*Filtro per lettere già trovate
+         * to_filter_in_at[][0] = lettera trovata
+         * to_filter_in_at[][1] = posizione
+         */
+        if (i < new_in_at) {
+            if (x->word[(int) to_filter_in_at[i][1]] != to_filter_in_at[i][0]) {
+                add_to_del_list(to_delete, x);
+                break;
+            }
+        }
+
+        /*Filtro per lettere not presenti in una posizione
+         * to_filter_not_in_at[][0] = lettera
+         * to_filter_not_in_at[][1] = posizione
+         */
+        if (i < new_not_in_at) {
+            if (x->word[(int) to_filter_not_in_at[i][1]] == to_filter_not_in_at[i][0]) {
+                add_to_del_list(to_delete, x);
+                break;
+            }
+        }
+
+
+        /*Filtro per numero di occorrenze
+         * to_filter_occ[][0] = lettera
+         * to_filter_occ[][1] = numero occorrenze
+         */
+        if (i < new_occ) {
+            int count = 0;
+            char *word = x->word;
+            for (int j = 0; j < k; j++) {
+                ccc++;
+                if (word[j] == to_filter_occ[i][0])
+                    count++;
+                if (count > to_filter_occ[i][1])break;
+            }
+            if (to_filter_occ[i][1] != count) {
+                add_to_del_list(to_delete, x);
+                break;
+            }
+        }
+
+        /*Filtro per numero minimo di occorrenze
+         * to_filter_min_occ[][0] = lettera
+         * to_filter_min_occ[][1] = numero minimo occorrenze
+         */
+        if (i < new_min_occ) {
+            int count = 0;
+            char *word = x->word;
+            for (int j = 0; j < k; j++) {
+                if (word[j] == to_filter_min_occ[i][0])
+                    count++;
+                if (count > to_filter_min_occ[i][1])break;
+            }
+            if (count < to_filter_min_occ[i][1]) {
+                add_to_del_list(to_delete, x);
+                break;
+            }
+        }
+
+    }
+
+
+    if (x->right != filtered_tree->nil)
+        apply_filters(filtered_tree, x->right, to_filter_occ, new_occ, to_filter_in_at, new_in_at, to_filter_min_occ,
+                      new_min_occ, to_filter_not_in_at, new_not_in_at, to_delete);
+
+}
 
 /*
 void apply_filter_in_at(RB_tree *filtered_tree, const char *in_at, int k) {
@@ -705,24 +790,24 @@ void nuova_partita() {
     if (hash_table_length > MAX_HASH_TABLE_LENGTH)hash_table_length = MAX_HASH_TABLE_LENGTH;
     //char not_in[ALPHABET_LENGTH] = {0};
     char min_occ[ALPHABET_LENGTH] = {0};
+    //char min_occ_applied[ALPHABET_LENGTH] = {0};
     char occ[ALPHABET_LENGTH];
-    char occ_applied[ALPHABET_LENGTH];
+    //char occ_applied[ALPHABET_LENGTH] = {0};
     char in_at[k];
     //char in_at_applied[k];
     char not_in_at[k][ALPHABET_LENGTH];
-    char not_in_at_applied[k][ALPHABET_LENGTH];
+    //char not_in_at_applied[k][ALPHABET_LENGTH];
     for (int i = 0; i < k; i++) {
         in_at[i] = -1;
         //in_at_applied[i] = 0;
     }
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
         occ[i] = -1;
-        occ_applied[i] = 0;
     }
     for (int i = 0; i < k; i++) {
         for (int j = 0; j < ALPHABET_LENGTH; j++) {
             not_in_at[i][j] = 0;
-            not_in_at_applied[i][j] = 0;
+            //not_in_at_applied[i][j] = 0;
         }
     }
 
@@ -746,7 +831,8 @@ void nuova_partita() {
 
         char input[256];
         if (scanf("%s", input) < 0)break;
-        if (_strcmp(input, "+stampa_filtrate") == 0);//printTree(filtered_tree.root);
+        if (_strcmp(input, "+stampa_filtrate") == 0)
+            printTree(filtered_tree.root);
         else if (_strcmp(input, "+inserisci_inizio") == 0) {
             inserisci_inizio(&filtered_tree, in_at, min_occ, occ, not_in_at);
             //apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at, to_delete);
@@ -759,12 +845,21 @@ void nuova_partita() {
                 char _min_occ[ALPHABET_LENGTH] = {0};
                 char res[k];
                 char used[k];
+
+                int new_occ = 0;
+                char to_filter_occ[k][2];
+                char to_filter_in_at[k][2];
+                int new_in_at = 0;
+                char to_filter_min_occ[k][2];
+                int new_min_occ = 0;
+                char to_filter_not_in_at[k][2];
+                int new_not_in_at = 0;
+
                 for (int i = 0; i < k; i++) {
                     res[i] = 0;
                     used[i] = 0;
                 }
                 //list toDelete = NULL;
-                char new_in_at = 0;
                 for (int j = 0; j < k; j++) {
                     if (ref_word[j] == input[j]) {
                         res[j] = '+';
@@ -772,7 +867,9 @@ void nuova_partita() {
 
                         if (in_at[j] == -1) {
                             in_at[j] = input[j];
-                            new_in_at = 1;
+                            to_filter_in_at[new_in_at][0] = input[j];
+                            to_filter_in_at[new_in_at][1] = j;
+                            new_in_at++;
                         }
 
                         //find_without_at(filtered_tree, input[j], j, &toDelete);
@@ -785,14 +882,12 @@ void nuova_partita() {
                         _min_occ[hash(input[j])]++;
                     }
                 }
-                if (new_in_at) {
+                /*if (new_in_at) {
                     find_without_at(&filtered_tree, filtered_tree.root, in_at, to_delete);
                     delete_in(&filtered_tree, to_delete);
-                }
+                }*/
                 //apply_filter_in_at(&filtered_tree, in_at, k);
 
-                int new_occ = 0;
-                char to_filter[k][2];
                 for (int j = 0; j < k; j++) {
                     if (res[j] != '+') {
                         int found = 0;
@@ -804,41 +899,55 @@ void nuova_partita() {
                                 used[i] = 1;
                                 found = 1;
                                 _min_occ[hash(input[j])]++;
-                                not_in_at[j][hash(input[j])] = 1;
 
-                                if (!not_in_at_applied[j][hash(input[j])]) {
-                                    find_with_at(&filtered_tree, filtered_tree.root, input[j], j, to_delete);
-                                    delete_in(&filtered_tree, to_delete);
-                                    not_in_at_applied[j][hash(input[j])] = 1;
+                                if (!not_in_at[j][hash(input[j])]) {
+                                    not_in_at[j][hash(input[j])] = 1;
+                                    to_filter_not_in_at[new_not_in_at][0] = input[j];
+                                    to_filter_not_in_at[new_not_in_at][1] = j;
+                                    new_not_in_at++;
                                 }
                                 break;
                             }
                         }
                         if (_min_occ[hash(input[j])] > min_occ[hash(input[j])]) {
                             min_occ[hash(input[j])] = _min_occ[hash(input[j])];
-                            if (min_occ[hash(input[j])] > 0) {
+                            /*if (min_occ[hash(input[j])] > 0) {
                                 find_with_min_occ(&filtered_tree, filtered_tree.root, input[j],
                                                   min_occ[hash(input[j])],
                                                   to_delete);
                                 delete_in(&filtered_tree, to_delete);
-                            }
+                            }*/
+                            to_filter_min_occ[new_min_occ][0] = input[j];
+                            to_filter_min_occ[new_min_occ][1] = min_occ[hash(input[j])];
+                            new_min_occ++;
                         }
                         if (!found) {
                             res[j] = '/';
                             //not_in[hash(input[j])] = 1;
-                            not_in_at[j][hash(input[j])] = 1;
-                            occ[hash(input[j])] = min_occ[hash(input[j])];
 
-                            if (!not_in_at_applied[j][hash(input[j])] && occ[hash(input[j])] != 0) {
+                            if (!not_in_at[j][hash(input[j])]) {
+                                not_in_at[j][hash(input[j])] = 1;
+                                to_filter_not_in_at[new_not_in_at][0] = input[j];
+                                to_filter_not_in_at[new_not_in_at][1] = j;
+                                new_not_in_at++;
+                            }
+                            if (occ[hash(input[j])] == -1) {
+                                occ[hash(input[j])] = min_occ[hash(input[j])];
+                                to_filter_occ[new_occ][0] = input[j];
+                                to_filter_occ[new_occ][1] = occ[hash(input[j])];
+                                new_occ++;
+                            }
+
+                            /*if (!not_in_at_applied[j][hash(input[j])] && occ[hash(input[j])] != 0) {
                                 find_with_at(&filtered_tree, filtered_tree.root, input[j], j, to_delete);
                                 delete_in(&filtered_tree, to_delete);
                                 not_in_at_applied[j][hash(input[j])] = 1;
                             }
                             if (!occ_applied[hash(input[j])] && occ[hash(input[j])] >= 0) {
-                                to_filter[new_occ][0] = input[j];
-                                to_filter[new_occ][1] = (char) hash(input[j]);
+                                to_filter_occ[new_occ][0] = input[j];
+                                to_filter_occ[new_occ][1] = (char) hash(input[j]);
                                 new_occ++;
-                            }
+                            }*/
                             //find_with(filtered_tree, input[j], &toDelete);
                             //delete_in(&filtered_tree, &toDelete);
                         }
@@ -847,20 +956,24 @@ void nuova_partita() {
 
                 for (int h = 0; h < new_occ; h++) {
                     for (int h2 = h + 1; h2 < new_occ; h2++) {
-                        if (to_filter[h][0] == to_filter[h2][0]) {
-                            to_filter[h2][0] = to_filter[new_occ - 1][0];
-                            to_filter[h2][1] = to_filter[new_occ - 1][1];
+                        if (to_filter_occ[h][0] == to_filter_occ[h2][0]) {
+                            to_filter_occ[h2][0] = to_filter_occ[new_occ - 1][0];
+                            to_filter_occ[h2][1] = to_filter_occ[new_occ - 1][1];
                             new_occ--;
                         }
                     }
                 }
 
-                if (new_occ) {
-                    find_with(&filtered_tree, filtered_tree.root, to_filter, new_occ, occ, occ_applied, to_delete);
+                apply_filters(&filtered_tree, filtered_tree.root, to_filter_occ, new_occ, to_filter_in_at, new_in_at,
+                              to_filter_min_occ, new_min_occ, to_filter_not_in_at, new_not_in_at, to_delete);
+                delete_in(&filtered_tree, to_delete);
+
+                /*if (new_occ) {
+                    find_with(&filtered_tree, filtered_tree.root, to_filter_occ, new_occ, occ, occ_applied, to_delete);
                     delete_in(&filtered_tree, to_delete);
                 }
                 for (int j = 0; j < k; j++)
-                    occ_applied[hash(input[j])] = 1;
+                    occ_applied[hash(input[j])] = 1;*/
                 //apply_filter_not_in(&filtered_tree, not_in);
                 //apply_filter_min_occ(&filtered_tree, min_occ,k);
                 //apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at, to_delete);
@@ -891,7 +1004,7 @@ int main() {
     dictionary.nil->color = BLACK;
     dictionary.root = dictionary.nil;
     node_t *x;
-    //setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
     if (scanf("%d", &k)) {
         char adding_words = 1;
         char temp[256];
