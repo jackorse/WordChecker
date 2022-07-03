@@ -595,16 +595,16 @@ int inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALPH
             new_dict->word = new_dict_word;
             new_dict->left = dictionary.nil;
             new_dict->right = dictionary.nil;
-            new_dict->deleted = 0;
+            new_dict->deleted = 1;
             insert(&dictionary, new_dict);
-            if (!check_filters(new_dict_word, in_at, min_occ, occ, not_in_at)) {
+            if (check_filters(new_dict_word, in_at, min_occ, occ, not_in_at)) {
                 /*new_filtered = malloc(sizeof(node_t));
                 new_filtered->word = new_dict_word;
                 new_filtered->left = dict->nil;
                 new_filtered->right = dict->nil;
                 insert(dict, new_filtered);*/
                 count++;
-                new_dict->deleted = 1;
+                new_dict->deleted = 0;
             }
         }
     }
@@ -665,67 +665,68 @@ void apply_filters(const RB_tree *const filtered_tree, node_t *x,
                       to_filter_min_occ,
                       new_min_occ, to_filter_not_in_at, new_not_in_at, to_delete);
 
-    char *word = x->word;
-    for (int i = 0; i < k; i++) {
+    if (!x->deleted) {
+        char *word = x->word;
+        for (int i = 0; i < k; i++) {
 
-        /*Filtro per lettere già trovate
-         * to_filter_in_at[][0] = lettera trovata
-         * to_filter_in_at[][1] = posizione
-         */
-        if (i < new_in_at) {
-            if (word[(int) to_filter_in_at[i][1]] != to_filter_in_at[i][0]) {
-                add_to_del_list(to_delete, x);
-                break;
+            /*Filtro per lettere già trovate
+             * to_filter_in_at[][0] = lettera trovata
+             * to_filter_in_at[][1] = posizione
+             */
+            if (i < new_in_at) {
+                if (word[(int) to_filter_in_at[i][1]] != to_filter_in_at[i][0]) {
+                    add_to_del_list(to_delete, x);
+                    break;
+                }
+            }
+
+            /*Filtro per lettere not presenti in una posizione
+             * to_filter_not_in_at[][0] = lettera
+             * to_filter_not_in_at[][1] = posizione
+             */
+            if (i < new_not_in_at) {
+                if (word[(int) to_filter_not_in_at[i][1]] == to_filter_not_in_at[i][0]) {
+                    add_to_del_list(to_delete, x);
+                    break;
+                }
+            }
+
+
+            /*Filtro per numero di occorrenze
+             * to_filter_occ[][0] = lettera
+             * to_filter_occ[][1] = numero occorrenze
+             */
+            if (i < new_occ) {
+                int count = 0;
+                for (int j = 0; j < k; j++) {
+                    ccc++;
+                    if (word[j] == to_filter_occ[i][0])
+                        count++;
+                    if (count > to_filter_occ[i][1])break;
+                }
+                if (to_filter_occ[i][1] != count) {
+                    add_to_del_list(to_delete, x);
+                    break;
+                }
+            }
+
+            /*Filtro per numero minimo di occorrenze
+             * to_filter_min_occ[][0] = lettera
+             * to_filter_min_occ[][1] = numero minimo occorrenze
+             */
+            if (i < new_min_occ) {
+                int count = 0;
+                for (int j = 0; j < k; j++) {
+                    if (word[j] == to_filter_min_occ[i][0])
+                        count++;
+                    if (count > to_filter_min_occ[i][1])break;
+                }
+                if (count < to_filter_min_occ[i][1]) {
+                    add_to_del_list(to_delete, x);
+                    break;
+                }
             }
         }
-
-        /*Filtro per lettere not presenti in una posizione
-         * to_filter_not_in_at[][0] = lettera
-         * to_filter_not_in_at[][1] = posizione
-         */
-        if (i < new_not_in_at) {
-            if (word[(int) to_filter_not_in_at[i][1]] == to_filter_not_in_at[i][0]) {
-                add_to_del_list(to_delete, x);
-                break;
-            }
-        }
-
-
-        /*Filtro per numero di occorrenze
-         * to_filter_occ[][0] = lettera
-         * to_filter_occ[][1] = numero occorrenze
-         */
-        if (i < new_occ) {
-            int count = 0;
-            for (int j = 0; j < k; j++) {
-                ccc++;
-                if (word[j] == to_filter_occ[i][0])
-                    count++;
-                if (count > to_filter_occ[i][1])break;
-            }
-            if (to_filter_occ[i][1] != count) {
-                add_to_del_list(to_delete, x);
-                break;
-            }
-        }
-
-        /*Filtro per numero minimo di occorrenze
-         * to_filter_min_occ[][0] = lettera
-         * to_filter_min_occ[][1] = numero minimo occorrenze
-         */
-        if (i < new_min_occ) {
-            int count = 0;
-            for (int j = 0; j < k; j++) {
-                if (word[j] == to_filter_min_occ[i][0])
-                    count++;
-                if (count > to_filter_min_occ[i][1])break;
-            }
-            if (count < to_filter_min_occ[i][1]) {
-                add_to_del_list(to_delete, x);
-                break;
-            }
-        }
-
     }
 
 
@@ -967,21 +968,21 @@ void nuova_partita() {
                                                 new_occ++;
                                             }
                                             */
-                                            //find_with(filtered_tree, input[j], &toDelete);
-                                            //delete_in(&filtered_tree, &toDelete);
-                                        }
-                                    }
-                                }
+                            //find_with(filtered_tree, input[j], &toDelete);
+                            //delete_in(&filtered_tree, &toDelete);
+                        }
+                    }
+                }
 
-                                for (int h = 0; h < new_occ; h++) {
-                                    for (int h2 = h + 1; h2 < new_occ; h2++) {
-                                        if (to_filter_occ[h][0] == to_filter_occ[h2][0]) {
-                                            to_filter_occ[h2][0] = to_filter_occ[new_occ - 1][0];
-                                            to_filter_occ[h2][1] = to_filter_occ[new_occ - 1][1];
-                                            new_occ--;
-                                        }
-                                    }
-                                }
+                for (int h = 0; h < new_occ; h++) {
+                    for (int h2 = h + 1; h2 < new_occ; h2++) {
+                        if (to_filter_occ[h][0] == to_filter_occ[h2][0]) {
+                            to_filter_occ[h2][0] = to_filter_occ[new_occ - 1][0];
+                            to_filter_occ[h2][1] = to_filter_occ[new_occ - 1][1];
+                            new_occ--;
+                        }
+                    }
+                }
 
                 if (new_occ > 0 || new_not_in_at > 0 || new_min_occ > 0 || new_in_at > 0) {
                     apply_filters(&dictionary, dictionary.root, to_filter_occ, new_occ, to_filter_in_at,
@@ -995,60 +996,58 @@ void nuova_partita() {
                                 }
                                 for (int j = 0; j < k; j++)
                                     occ_applied[hash(input[j])] = 1;
-                                * /
-                                //apply_filter_not_in(&filtered_tree, not_in);
-                                //apply_filter_min_occ(&filtered_tree, min_occ,k);
-                                //apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at, to_delete);
+                                */
+                //apply_filter_not_in(&filtered_tree, not_in);
+                //apply_filter_min_occ(&filtered_tree, min_occ,k);
+                //apply_filters(&filtered_tree, in_at,/* not_in, */min_occ, occ, not_in_at, to_delete);
 
-                            for (int j = 0; j < k; j++) {
-                                printf("%c", res[j]);
-                            }
-
-                            printf("\n%d\n", num_filtered_nodes);
-                            hash_table_length = num_filtered_nodes / HASH_TABLE_LENGTH_FACTOR;
-                            if (hash_table_length < MIN_HASH_TABLE_LENGTH)hash_table_length = MIN_HASH_TABLE_LENGTH;
-                            if (hash_table_length > MAX_HASH_TABLE_LENGTH)hash_table_length = MAX_HASH_TABLE_LENGTH;
-                            n--;
-                            //printf("CICLI: %d\n", ccc);
-                        } else {
-                            printf("not_exists\n");
-                        }
-                    }
+                for (int j = 0; j < k; j++) {
+                    printf("%c", res[j]);
                 }
-                printf("ko\n");;
-                destroy(&dictionary, dictionary.root);
-                n_partite++;
-                if (n_partite >= 1)
-                    exit(-1);
-            }
 
-            int main() {
-                dictionary.nil = malloc(sizeof(node_t));
-                dictionary.nil->word = NULL;
-                dictionary.nil->color = BLACK;
-                dictionary.root = dictionary.nil;
-                node_t *x;
-                setvbuf(stdout, NULL, _IONBF, 0);
-                if (scanf("%d", &k)) {
-                    char adding_words = 1;
-                    char temp[256];
-                    while (1) {
-                        if (scanf("%s", temp) < 0)break;
-                        if (_strcmp(temp, "+nuova_partita") == 0)
-                            nuova_partita();
-                        else if (_strcmp(temp, "+inserisci_inizio") == 0)
-                            adding_words = 1;
-                        else if (_strcmp(temp, "+inserisci_fine") == 0)
-                            adding_words = 0;
-                        else if (strlen(temp) == k && adding_words) {
-                            char *c = malloc(sizeof(char[k + 1]));
-                            strcpy(c, temp);
-                            x = malloc(sizeof(node_t));
-                            x->word = c;
-                            x->deleted = 0;
-                            insert(&dictionary, x);
-                        }
-                    }
-                }
-                return 0;
+                printf("\n%d\n", num_filtered_nodes);
+                hash_table_length = num_filtered_nodes / HASH_TABLE_LENGTH_FACTOR;
+                if (hash_table_length < MIN_HASH_TABLE_LENGTH)hash_table_length = MIN_HASH_TABLE_LENGTH;
+                if (hash_table_length > MAX_HASH_TABLE_LENGTH)hash_table_length = MAX_HASH_TABLE_LENGTH;
+                n--;
+                //printf("CICLI: %d\n", ccc);
+            } else {
+                printf("not_exists\n");
             }
+        }
+    }
+    printf("ko\n");;
+    destroy(&dictionary, dictionary.root);
+    n_partite++;
+}
+
+int main() {
+    dictionary.nil = malloc(sizeof(node_t));
+    dictionary.nil->word = NULL;
+    dictionary.nil->color = BLACK;
+    dictionary.root = dictionary.nil;
+    node_t *x;
+    setvbuf(stdout, NULL, _IONBF, 0);
+    if (scanf("%d", &k)) {
+        char adding_words = 1;
+        char temp[256];
+        while (1) {
+            if (scanf("%s", temp) < 0)break;
+            if (_strcmp(temp, "+nuova_partita") == 0)
+                nuova_partita();
+            else if (_strcmp(temp, "+inserisci_inizio") == 0)
+                adding_words = 1;
+            else if (_strcmp(temp, "+inserisci_fine") == 0)
+                adding_words = 0;
+            else if (strlen(temp) == k && adding_words) {
+                char *c = malloc(sizeof(char[k + 1]));
+                strcpy(c, temp);
+                x = malloc(sizeof(node_t));
+                x->word = c;
+                x->deleted = 0;
+                insert(&dictionary, x);
+            }
+        }
+    }
+    return 0;
+}
