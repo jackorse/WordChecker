@@ -11,6 +11,8 @@
 #define MIN_HASH_TABLE_LENGTH 50
 #define MAX_HASH_TABLE_LENGTH 100000
 #define HASH_TABLE_LENGTH_FACTOR 11
+#define NUM_WORDS_PER_MALLOC_INIT 10000
+#define NUM_WORDS_PER_MALLOC 1000
 
 int num_filtered_nodes = 0;
 //int hash_table_length;
@@ -40,14 +42,27 @@ int k;
 RB_tree dictionary;
 list filtered_list = NULL;
 
-static inline int _strcmp(const char s1[k], const char s2[k]) {
+static inline int _strcmp(const char s1[k + 1], const char s2[k + 1]) {
     /*for (int i = 0; i < k; i++) {
         if (s1[i] != s2[i])
             return s1[i] - s2[i];
     }
     return 0;*/
-    return strcmp(s1, s2);
+    /*if (strcmp(s2, "+nuova_partita") != 0 && strcmp(s2, "+inserisci_inizio") != 0 &&
+        strcmp(s2, "+inserisci_fine") != 0) {
+        printf("%s", s1);
+        if (strcmp(s1, s2) < 0)
+            printf("<");
+        else if (strcmp(s1, s2) > 0)
+            printf(">");
+        else
+            printf("=");
+        printf("%s\n", s2);
+    }*/
+    return strncmp(s1, s2, k);
 }
+
+#ifdef DEBUG
 
 void check_tree(const node_t *x) {
     if (!x)return;
@@ -57,6 +72,27 @@ void check_tree(const node_t *x) {
 
     check_tree(x->left);
     check_tree(x->right);
+}
+
+void check_tree_order(const node_t *x) {
+    if (!x)return;
+    if (x->left != dictionary.nil && _strcmp(x->left->word, x->word) >= 0)
+        printf("NOOOOOO");
+    if (x->right != dictionary.nil && _strcmp(x->right->word, x->word) <= 0)
+        printf("NOOOOOO");
+
+
+    if (x->left != dictionary.nil)check_tree_order(x->left);
+    if (x->right != dictionary.nil)check_tree_order(x->right);
+}
+
+void check_tree_words(const node_t *x) {
+    if (!x || x == dictionary.nil)return;
+
+    assert(strchr(x->word, '\n') == 0);
+
+    if (x->left != dictionary.nil)check_tree_words(x->left);
+    if (x->right != dictionary.nil)check_tree_words(x->right);
 }
 
 int compare_tree(const node_t *x1, const node_t *x2) {
@@ -70,6 +106,8 @@ int compare_tree(const node_t *x1, const node_t *x2) {
     }
     return compare_tree(x1->left, x2->left) + compare_tree(x1->right, x2->right);
 }
+
+#endif
 
 void left_rotate(RB_tree *tree, node_t *x) {
     node_t *y = x->right;
@@ -175,7 +213,7 @@ void printTree(const node_t *x) {
     if (x == dictionary.nil)return;
 
     if (x->left != dictionary.nil)printTree(x->left);
-    if (!x->deleted)printf("%s\n", x->word);
+    if (!x->deleted)printf("%.*s\n", k, x->word);
     if (x->right != dictionary.nil)printTree(x->right);
 }
 
@@ -582,22 +620,32 @@ void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALP
                       char not_in_at[k][ALPHABET_LENGTH]) {
     node_t *new_dict;
     char read[256];
+    int num_words = 0;
+    char *buffer = malloc(k * NUM_WORDS_PER_MALLOC + 1);
     while (1) {
         if (scanf("%s", read) < 0)break;
         if (_strcmp(read, "+inserisci_fine") == 0)
             return;
         if (strlen(read) == k) {
-            char *new_dict_word = malloc(sizeof(char[k + 1]));
+            //char *new_dict_word = malloc(sizeof(char[k + 1]));
             //char *new_filtered_word = malloc(sizeof(char[k + 1]));
-            strcpy(new_dict_word, read);
+            if (num_words >= NUM_WORDS_PER_MALLOC) {
+                buffer = malloc(k * NUM_WORDS_PER_MALLOC + 1);
+                assert(buffer);
+                buffer[0] = '\0';
+                num_words = 0;
+            }
+            strncpy(buffer + num_words * sizeof(char[k]), read, k);
+            buffer[num_words * sizeof(char[k]) + k] = '\0';
+
             //strcpy(new_filtered_word, read);
             new_dict = malloc(sizeof(node_t));
-            new_dict->word = new_dict_word;
+            new_dict->word = buffer + num_words * sizeof(char[k]);;
             new_dict->left = dictionary.nil;
             new_dict->right = dictionary.nil;
             new_dict->deleted = 1;
             insert(&dictionary, new_dict);
-            if (check_filters(new_dict_word, in_at, min_occ, occ, not_in_at)) {
+            if (check_filters(read, in_at, min_occ, occ, not_in_at)) {
                 /*new_filtered = malloc(sizeof(node_t));
                 new_filtered->word = new_dict_word;
                 new_filtered->left = dict->nil;
@@ -612,6 +660,7 @@ void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALP
                 if (filtered_list) filtered_list->prev = node;
                 filtered_list = node;
             }
+            num_words++;
         }
     }
 }
@@ -1071,23 +1120,33 @@ int main() {
     dictionary.nil->color = BLACK;
     dictionary.root = dictionary.nil;
     node_t *x;
-    //setvbuf(stdout, NULL, _IONBF, 0);
+#ifdef DEBUG
+    setvbuf(stdout, NULL, _IONBF, 0);
+#endif
     if (scanf("%d", &k)) {
+        int num_words = 0;
+        char *buffer = malloc(k * NUM_WORDS_PER_MALLOC_INIT + 1);
         char adding_words = 1;
-        char temp[256];
+        char read[256];
         while (1) {
-            if (scanf("%s", temp) < 0)break;
-            if (_strcmp(temp, "+nuova_partita") == 0)
+            if (scanf("%s", read) < 0)break;
+            if (_strcmp(read, "+nuova_partita") == 0)
                 nuova_partita();
-            else if (_strcmp(temp, "+inserisci_inizio") == 0)
+            else if (_strcmp(read, "+inserisci_inizio") == 0)
                 adding_words = 1;
-            else if (_strcmp(temp, "+inserisci_fine") == 0)
+            else if (_strcmp(read, "+inserisci_fine") == 0)
                 adding_words = 0;
-            else if (strlen(temp) == k && adding_words) {
-                char *c = malloc(sizeof(char[k + 1]));
-                strcpy(c, temp);
+            else if (strlen(read) == k && adding_words) {
+                if (num_words >= NUM_WORDS_PER_MALLOC_INIT) {
+                    buffer = malloc(k * NUM_WORDS_PER_MALLOC_INIT + 1);
+                    assert(buffer);
+                    buffer[0] = '\0';
+                    num_words = 0;
+                }
+                strncpy(buffer + num_words * sizeof(char[k]), read, k);
+                buffer[num_words * sizeof(char[k]) + k] = '\0';
                 x = malloc(sizeof(node_t));
-                x->word = c;
+                x->word = buffer + num_words * sizeof(char[k]);
                 x->deleted = 0;
                 insert(&dictionary, x);
                 num_filtered_nodes++;
@@ -1097,6 +1156,11 @@ int main() {
                 node->prev = NULL;
                 if (filtered_list) filtered_list->prev = node;
                 filtered_list = node;
+                num_words++;/*
+#ifdef DEBUG
+                check_tree_order(dictionary.root);
+                check_tree_words(dictionary.root);
+#endif*/
             }
         }
     }
