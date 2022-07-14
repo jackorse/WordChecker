@@ -13,6 +13,8 @@
 #define HASH_TABLE_LENGTH_FACTOR 11
 #define NUM_WORDS_PER_MALLOC_INIT 10000
 #define NUM_WORDS_PER_MALLOC 1000
+#define NUM_NODES_PER_MALLOC_INIT 10000
+#define NUM_NODES_PER_MALLOC 1000
 
 int num_filtered_nodes = 0;
 //int hash_table_length;
@@ -622,6 +624,8 @@ void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALP
     char read[256];
     int num_words = 0;
     char *buffer = malloc(k * NUM_WORDS_PER_MALLOC + 1);
+    int num_nodes = 0;
+    void *node_buffer = malloc(sizeof(node_t) * NUM_NODES_PER_MALLOC);
     while (1) {
         if (scanf("%s", read) < 0)break;
         if (_strcmp(read, "+inserisci_fine") == 0)
@@ -635,11 +639,16 @@ void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALP
                 buffer[0] = '\0';
                 num_words = 0;
             }
+            if (num_nodes >= NUM_NODES_PER_MALLOC) {
+                node_buffer = malloc(sizeof(node_t) * NUM_NODES_PER_MALLOC);
+                assert(node_buffer);
+                num_nodes = 0;
+            }
             strncpy(buffer + num_words * sizeof(char[k]), read, k);
             buffer[num_words * sizeof(char[k]) + k] = '\0';
 
             //strcpy(new_filtered_word, read);
-            new_dict = malloc(sizeof(node_t));
+            new_dict = node_buffer + num_nodes * sizeof(node_t);
             new_dict->word = buffer + num_words * sizeof(char[k]);;
             new_dict->left = dictionary.nil;
             new_dict->right = dictionary.nil;
@@ -661,6 +670,7 @@ void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALP
                 filtered_list = node;
             }
             num_words++;
+            num_nodes++;
         }
     }
 }
@@ -1125,7 +1135,9 @@ int main() {
 #endif
     if (scanf("%d", &k)) {
         int num_words = 0;
-        char *buffer = malloc(k * NUM_WORDS_PER_MALLOC_INIT + 1);
+        char *word_buffer = malloc(k * NUM_WORDS_PER_MALLOC_INIT + 1);
+        int num_nodes = 0;
+        void *node_buffer = malloc(sizeof(node_t) * NUM_NODES_PER_MALLOC_INIT);
         char adding_words = 1;
         char read[256];
         while (1) {
@@ -1138,15 +1150,20 @@ int main() {
                 adding_words = 0;
             else if (strlen(read) == k && adding_words) {
                 if (num_words >= NUM_WORDS_PER_MALLOC_INIT) {
-                    buffer = malloc(k * NUM_WORDS_PER_MALLOC_INIT + 1);
-                    assert(buffer);
-                    buffer[0] = '\0';
+                    word_buffer = malloc(k * NUM_WORDS_PER_MALLOC_INIT + 1);
+                    assert(word_buffer);
+                    word_buffer[0] = '\0';
                     num_words = 0;
                 }
-                strncpy(buffer + num_words * sizeof(char[k]), read, k);
-                buffer[num_words * sizeof(char[k]) + k] = '\0';
-                x = malloc(sizeof(node_t));
-                x->word = buffer + num_words * sizeof(char[k]);
+                if (num_nodes >= NUM_NODES_PER_MALLOC_INIT) {
+                    node_buffer = malloc(sizeof(node_t) * NUM_NODES_PER_MALLOC_INIT);
+                    assert(node_buffer);
+                    num_nodes = 0;
+                }
+                strncpy(word_buffer + num_words * sizeof(char[k]), read, k);
+                word_buffer[num_words * sizeof(char[k]) + k] = '\0';
+                x = node_buffer + num_nodes * sizeof(node_t);
+                x->word = word_buffer + num_words * sizeof(char[k]);
                 x->deleted = 0;
                 insert(&dictionary, x);
                 num_filtered_nodes++;
@@ -1156,11 +1173,8 @@ int main() {
                 node->prev = NULL;
                 if (filtered_list) filtered_list->prev = node;
                 filtered_list = node;
-                num_words++;/*
-#ifdef DEBUG
-                check_tree_order(dictionary.root);
-                check_tree_words(dictionary.root);
-#endif*/
+                num_words++;
+                num_nodes++;
             }
         }
     }
