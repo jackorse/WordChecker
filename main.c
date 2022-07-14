@@ -23,6 +23,8 @@ typedef struct node {
     struct node *parent;
     struct node *left;
     struct node *right;
+    struct node *prev;
+    struct node *next;
     char *word;
     char color;
     char deleted;
@@ -30,19 +32,12 @@ typedef struct node {
 
 typedef struct tree {
     node_t *root;
+    node_t *head;
     node_t *nil;
 } RB_tree;
 
-typedef struct list_node {
-    node_t *ptr;
-    struct list_node *next;
-    struct list_node *prev;
-} list_node_t;
-typedef list_node_t *list;
-
 int k;
 RB_tree dictionary;
-list filtered_list = NULL;
 
 static inline int _strcmp(const char s1[k + 1], const char s2[k + 1]) {
     /*for (int i = 0; i < k; i++) {
@@ -240,16 +235,33 @@ node_t *search(node_t *x, char *word) {
 }
 
 node_t *tree_minimum(node_t *x) {
-    while (x->left->word)
+    while (x->left != dictionary.nil)
         x = x->left;
     return x;
 }
 
+node_t *tree_maximum(node_t *x) {
+    while (x->right != dictionary.nil)
+        x = x->right;
+    return x;
+}
+
 node_t *tree_successor(node_t *x) {
-    if (x->right->word)
+    if (x->right != dictionary.nil)
         return tree_minimum(x->right);
     node_t *y = x->parent;
-    while (y->word && x == y->right) {
+    while (y != dictionary.nil && x == y->right) {
+        x = y;
+        y = y->parent;
+    }
+    return y;
+}
+
+node_t *tree_predecessor(node_t *x) {
+    if (x->left != dictionary.nil)
+        return tree_maximum(x->left);
+    node_t *y = x->parent;
+    while (y != dictionary.nil && x == y->left) {
         x = y;
         y = y->parent;
     }
@@ -662,12 +674,11 @@ void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALP
                 insert(dict, new_filtered);*/
                 num_filtered_nodes++;
                 new_dict->deleted = 0;
-                list_node_t *node = malloc(sizeof(list_node_t));
-                node->ptr = new_dict;
-                node->next = filtered_list;
-                node->prev = NULL;
-                if (filtered_list) filtered_list->prev = node;
-                filtered_list = node;
+                node_t *temp = dictionary.head;
+                dictionary.head = new_dict;
+                new_dict->prev = NULL;
+                new_dict->next = temp;
+                if (temp)temp->prev = new_dict;
             }
             num_words++;
             num_nodes++;
@@ -721,13 +732,12 @@ void apply_filters(
         const char to_filter_min_occ[][2], const int new_min_occ,
         const char to_filter_not_in_at[][2], const int new_not_in_at
         /*list to_delete[hash_table_length]*/) {
-    if (!filtered_list)return;
-    list_node_t *index = filtered_list;
+    if (num_filtered_nodes <= 0)return;
+    node_t *index = dictionary.head;
     while (index) {
-        list_node_t *succ = index->next;
-        if (!index->ptr->deleted) {
-            node_t *node = index->ptr;
-            char *word = node->word;
+        node_t *succ = index->next;
+        if (!index->deleted) {
+            char *word = index->word;
             for (int i = 0; i < k; i++) {
 
                 /*Filtro per lettere già trovate
@@ -736,17 +746,17 @@ void apply_filters(
                  */
                 if (i < new_in_at) {
                     if (word[(int) to_filter_in_at[i][1]] != to_filter_in_at[i][0]) {
-                        node->deleted = 1;
+                        index->deleted = 1;
                         num_filtered_nodes--;
                         //add_to_del_list(to_delete, x);
                         if (!index->prev) {
-                            filtered_list = filtered_list->next;
-                            if (filtered_list)filtered_list->prev = NULL;
+                            dictionary.head = dictionary.head->next;
+                            if (dictionary.head)dictionary.head->prev = NULL;
                         } else {
                             index->prev->next = index->next;
                             if (index->next)index->next->prev = index->prev;
                         }
-                        free(index);
+                        //free(index);
                         break;
                     }
                 }
@@ -757,16 +767,16 @@ void apply_filters(
                  */
                 if (i < new_not_in_at) {
                     if (word[(int) to_filter_not_in_at[i][1]] == to_filter_not_in_at[i][0]) {
-                        node->deleted = 1;
+                        index->deleted = 1;
                         num_filtered_nodes--;
                         if (!index->prev) {
-                            filtered_list = filtered_list->next;
-                            if (filtered_list)filtered_list->prev = NULL;
+                            dictionary.head = dictionary.head->next;
+                            if (dictionary.head)dictionary.head->prev = NULL;
                         } else {
                             index->prev->next = index->next;
                             if (index->next)index->next->prev = index->prev;
                         }
-                        free(index);
+                        //free(index);
                         //add_to_del_list(to_delete, x);
                         break;
                     }
@@ -785,16 +795,16 @@ void apply_filters(
                         if (count > to_filter_occ[i][1])break;
                     }
                     if (to_filter_occ[i][1] != count) {
-                        node->deleted = 1;
+                        index->deleted = 1;
                         num_filtered_nodes--;
                         if (!index->prev) {
-                            filtered_list = filtered_list->next;
-                            if (filtered_list)filtered_list->prev = NULL;
+                            dictionary.head = dictionary.head->next;
+                            if (dictionary.head)dictionary.head->prev = NULL;
                         } else {
                             index->prev->next = index->next;
                             if (index->next)index->next->prev = index->prev;
                         }
-                        free(index);
+                        //free(index);
                         //add_to_del_list(to_delete, x);
                         break;
                     }
@@ -812,16 +822,16 @@ void apply_filters(
                         if (count > to_filter_min_occ[i][1])break;
                     }
                     if (count < to_filter_min_occ[i][1]) {
-                        node->deleted = 1;
+                        index->deleted = 1;
                         num_filtered_nodes--;
                         if (!index->prev) {
-                            filtered_list = filtered_list->next;
-                            if (filtered_list)filtered_list->prev = NULL;
+                            dictionary.head = dictionary.head->next;
+                            if (dictionary.head)dictionary.head->prev = NULL;
                         } else {
                             index->prev->next = index->next;
                             if (index->next)index->next->prev = index->prev;
                         }
-                        free(index);
+                        //free(index);
                         //add_to_del_list(to_delete, x);
                         break;
                     }
@@ -883,12 +893,11 @@ void reset(node_t *x) {
     if (x->deleted) {
         x->deleted = 0;
         num_filtered_nodes++;
-        list_node_t *node = malloc(sizeof(list_node_t));
-        node->ptr = x;
-        node->next = filtered_list;
-        node->prev = NULL;
-        if (filtered_list)filtered_list->prev = node;
-        filtered_list = node;
+        node_t *temp = dictionary.head;
+        dictionary.head = x;
+        x->prev = NULL;
+        x->next = temp;
+        if (temp)temp->prev = x;
     }
 }
 
@@ -1129,6 +1138,7 @@ int main() {
     dictionary.nil->word = NULL;
     dictionary.nil->color = BLACK;
     dictionary.root = dictionary.nil;
+    dictionary.head = NULL;
     node_t *x;
 #ifdef DEBUG
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -1167,12 +1177,11 @@ int main() {
                 x->deleted = 0;
                 insert(&dictionary, x);
                 num_filtered_nodes++;
-                list_node_t *node = malloc(sizeof(list_node_t));
-                node->ptr = x;
-                node->next = filtered_list;
-                node->prev = NULL;
-                if (filtered_list) filtered_list->prev = node;
-                filtered_list = node;
+                node_t *temp = dictionary.head;
+                dictionary.head = x;
+                x->prev = NULL;
+                x->next = temp;
+                if (temp)temp->prev = x;
                 num_words++;
                 num_nodes++;
             }
