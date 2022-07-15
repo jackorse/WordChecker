@@ -1,3 +1,5 @@
+#define NDEBUG
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -7,11 +9,10 @@
 #define BLACK 1
 #define ALPHABET_LENGTH 64
 #define NUM_WORDS_PER_MALLOC_INIT 20000
-#define NUM_WORDS_PER_MALLOC 5000
+#define NUM_WORDS_PER_MALLOC 10000
 #define NUM_NODES_PER_MALLOC_INIT 20000
-#define NUM_NODES_PER_MALLOC 5000
+#define NUM_NODES_PER_MALLOC 10000
 
-int num_filtered_nodes = 0;
 /*
 #ifdef EVAL
 char print_buffer[100000];
@@ -37,6 +38,7 @@ typedef struct tree {
 
 int k;
 RB_tree dictionary;
+int num_filtered_nodes = 0;
 
 static inline int _strcmp(const char s1[k + 1], const char s2[k + 1]) {
     /*for (int i = 0; i < k; i++) {
@@ -47,14 +49,14 @@ static inline int _strcmp(const char s1[k + 1], const char s2[k + 1]) {
     return strncmp(s1, s2, k);
 }
 
-void left_rotate(RB_tree *tree, node_t *x) {
+void left_rotate(node_t *x) {
     node_t *y = x->right;
     x->right = y->left; //il sottoalbero sinistro di y diventa quello destro di x
-    if (y->left != tree->nil)
+    if (y->left != dictionary.nil)
         y->left->parent = x;
     y->parent = x->parent; //attacca il padre di x a y
-    if (x->parent == tree->nil)
-        tree->root = y;
+    if (x->parent == dictionary.nil)
+        dictionary.root = y;
     else if (x == x->parent->left)
         x->parent->left = y;
     else
@@ -63,14 +65,14 @@ void left_rotate(RB_tree *tree, node_t *x) {
     x->parent = y;
 }
 
-void right_rotate(RB_tree *tree, struct node *x) {
+void right_rotate(node_t *x) {
     node_t *y = x->left;
     x->left = y->right; //il sottoalbero sinistro di y diventa quello destro di x
-    if (y->right != tree->nil)
+    if (y->right != dictionary.nil)
         y->right->parent = x;
     y->parent = x->parent; //attacca il padre di x a y
-    if (x->parent == tree->nil)
-        tree->root = y;
+    if (x->parent == dictionary.nil)
+        dictionary.root = y;
     else if (x == x->parent->right)
         x->parent->right = y;
     else
@@ -79,9 +81,9 @@ void right_rotate(RB_tree *tree, struct node *x) {
     x->parent = y;
 }
 
-void insert_fixup(RB_tree *tree, node_t *z) {
-    if (z == tree->root)
-        tree->root->color = BLACK;
+void insert_fixup(node_t *z) {
+    if (z == dictionary.root)
+        dictionary.root->color = BLACK;
     else {
         node_t *x = z->parent; // x e' il padre di z
         if (x->color == RED) {
@@ -91,16 +93,16 @@ void insert_fixup(RB_tree *tree, node_t *z) {
                     x->color = BLACK; // Caso 1
                     y->color = BLACK; // Caso 1
                     x->parent->color = RED; // Caso 1
-                    insert_fixup(tree, x->parent); // Caso 1
+                    insert_fixup(x->parent); // Caso 1
                 } else {
                     if (z == x->right) {
                         z = x; // Caso 2
-                        left_rotate(tree, z); // Caso 2
+                        left_rotate(z); // Caso 2
                         x = z->parent; // Caso 2
                     }
                     x->color = BLACK; // Caso 3
                     x->parent->color = RED; // Caso 3
-                    right_rotate(tree, x->parent); // Caso 3
+                    right_rotate(x->parent); // Caso 3
                 }
             } else {//(come 6 - 18, scambiando “right”↔“left”)
                 node_t *y = x->parent->left; // y e' fratello di x
@@ -108,43 +110,44 @@ void insert_fixup(RB_tree *tree, node_t *z) {
                     x->color = BLACK; // Caso 1
                     y->color = BLACK; // Caso 1
                     x->parent->color = RED; // Caso 1
-                    insert_fixup(tree, x->parent); // Caso 1
+                    insert_fixup(x->parent); // Caso 1
                 } else {
                     if (z == x->left) {
                         z = x; // Caso 2
-                        right_rotate(tree, z); // Caso 2
+                        right_rotate(z); // Caso 2
                         x = z->parent; // Caso 2
                     }
                     x->color = BLACK; // Caso 3
                     x->parent->color = RED; // Caso 3
-                    left_rotate(tree, x->parent); // Caso 3
+                    left_rotate(x->parent); // Caso 3
                 }
             }
         }
     }
 }
 
-void insert(RB_tree *tree, node_t *z) {
-    node_t *y = tree->nil; // y padre del nodo considerato
-    node_t *x = tree->root; // nodo considerato
-    while (x != tree->nil) {
+void insert(node_t *z) {
+    node_t *y = dictionary.nil; // y padre del nodo considerato
+    node_t *x = dictionary.root; // nodo considerato
+    char *z_word = z->word;
+    while (x != dictionary.nil) {
         y = x;
-        if (_strcmp(z->word, x->word) < 0)
+        if (_strcmp(z_word, x->word) < 0)
             x = x->left;
         else
             x = x->right;
     }
     z->parent = y;
-    if (y == tree->nil)
-        tree->root = z; //l'albero T e' vuoto
-    else if (_strcmp(z->word, y->word) < 0)
+    if (y == dictionary.nil)
+        dictionary.root = z; //l'albero T e' vuoto
+    else if (_strcmp(z_word, y->word) < 0)
         y->left = z;
     else
         y->right = z;
-    z->left = tree->nil;
-    z->right = tree->nil;
+    z->left = dictionary.nil;
+    z->right = dictionary.nil;
     z->color = RED;
-    insert_fixup(tree, z);
+    insert_fixup(z);
 }
 
 void printTree(const node_t *x) {
@@ -156,7 +159,7 @@ void printTree(const node_t *x) {
 }
 
 node_t *search(node_t *x, char *word) {
-    if (!x->word || _strcmp(word, x->word) == 0)
+    if (x == dictionary.nil || _strcmp(word, x->word) == 0)
         return x;
     if (_strcmp(word, x->word) < 0)
         return search(x->left, word);
@@ -256,7 +259,7 @@ void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALP
             new_dict->left = dictionary.nil;
             new_dict->right = dictionary.nil;
             new_dict->deleted = 1;
-            insert(&dictionary, new_dict);
+            insert(new_dict);
             if (check_filters(read, in_at, min_occ, occ, not_in_at)) {
                 /*new_filtered = malloc(sizeof(node_t));
                 new_filtered->word = new_dict_word;
@@ -286,106 +289,105 @@ void apply_filters(
     if (num_filtered_nodes <= 0)return;
     node_t *index = dictionary.head;
     while (index) {
+        assert(!index->deleted);
         node_t *succ = index->next;
-        if (!index->deleted) {
-            char *word = index->word;
-            for (int i = 0; i < k; i++) {
+        char *word = index->word;
+        for (int i = 0; i < k; i++) {
 
-                /*Filtro per lettere già trovate
-                 * to_filter_in_at[][0] = lettera trovata
-                 * to_filter_in_at[][1] = posizione
-                 */
-                if (i < new_in_at) {
-                    if (word[(int) to_filter_in_at[i][1]] != to_filter_in_at[i][0]) {
-                        index->deleted = 1;
-                        num_filtered_nodes--;
-                        //add_to_del_list(to_delete, x);
-                        if (!index->prev) {
-                            dictionary.head = dictionary.head->next;
-                            if (dictionary.head)dictionary.head->prev = NULL;
-                        } else {
-                            index->prev->next = index->next;
-                            if (index->next)index->next->prev = index->prev;
-                        }
-                        //free(index);
-                        break;
+            /*Filtro per lettere già trovate
+             * to_filter_in_at[][0] = lettera trovata
+             * to_filter_in_at[][1] = posizione
+             */
+            if (i < new_in_at) {
+                if (word[(int) to_filter_in_at[i][1]] != to_filter_in_at[i][0]) {
+                    index->deleted = 1;
+                    num_filtered_nodes--;
+                    //add_to_del_list(to_delete, x);
+                    if (!index->prev) {
+                        dictionary.head = dictionary.head->next;
+                        if (dictionary.head)dictionary.head->prev = NULL;
+                    } else {
+                        index->prev->next = index->next;
+                        if (index->next)index->next->prev = index->prev;
                     }
+                    //free(index);
+                    break;
                 }
+            }
 
-                /*Filtro per lettere not presenti in una posizione
-                 * to_filter_not_in_at[][0] = lettera
-                 * to_filter_not_in_at[][1] = posizione
-                 */
-                if (i < new_not_in_at) {
-                    if (word[(int) to_filter_not_in_at[i][1]] == to_filter_not_in_at[i][0]) {
-                        index->deleted = 1;
-                        num_filtered_nodes--;
-                        if (!index->prev) {
-                            dictionary.head = dictionary.head->next;
-                            if (dictionary.head)dictionary.head->prev = NULL;
-                        } else {
-                            index->prev->next = index->next;
-                            if (index->next)index->next->prev = index->prev;
-                        }
-                        //free(index);
-                        //add_to_del_list(to_delete, x);
-                        break;
+            /*Filtro per lettere not presenti in una posizione
+             * to_filter_not_in_at[][0] = lettera
+             * to_filter_not_in_at[][1] = posizione
+             */
+            if (i < new_not_in_at) {
+                if (word[(int) to_filter_not_in_at[i][1]] == to_filter_not_in_at[i][0]) {
+                    index->deleted = 1;
+                    num_filtered_nodes--;
+                    if (!index->prev) {
+                        dictionary.head = dictionary.head->next;
+                        if (dictionary.head)dictionary.head->prev = NULL;
+                    } else {
+                        index->prev->next = index->next;
+                        if (index->next)index->next->prev = index->prev;
                     }
+                    //free(index);
+                    //add_to_del_list(to_delete, x);
+                    break;
                 }
+            }
 
 
-                /*Filtro per numero di occorrenze
-                 * to_filter_occ[][0] = lettera
-                 * to_filter_occ[][1] = numero occorrenze
-                 */
-                if (i < new_occ) {
-                    int count = 0;
-                    for (int j = 0; j < k; j++) {
-                        if (word[j] == to_filter_occ[i][0])
-                            count++;
-                        if (count > to_filter_occ[i][1])break;
-                    }
-                    if (to_filter_occ[i][1] != count) {
-                        index->deleted = 1;
-                        num_filtered_nodes--;
-                        if (!index->prev) {
-                            dictionary.head = dictionary.head->next;
-                            if (dictionary.head)dictionary.head->prev = NULL;
-                        } else {
-                            index->prev->next = index->next;
-                            if (index->next)index->next->prev = index->prev;
-                        }
-                        //free(index);
-                        //add_to_del_list(to_delete, x);
-                        break;
-                    }
+            /*Filtro per numero di occorrenze
+             * to_filter_occ[][0] = lettera
+             * to_filter_occ[][1] = numero occorrenze
+             */
+            if (i < new_occ) {
+                int count = 0;
+                for (int j = 0; j < k; j++) {
+                    if (word[j] == to_filter_occ[i][0])
+                        count++;
+                    if (count > to_filter_occ[i][1])break;
                 }
+                if (to_filter_occ[i][1] != count) {
+                    index->deleted = 1;
+                    num_filtered_nodes--;
+                    if (!index->prev) {
+                        dictionary.head = dictionary.head->next;
+                        if (dictionary.head)dictionary.head->prev = NULL;
+                    } else {
+                        index->prev->next = index->next;
+                        if (index->next)index->next->prev = index->prev;
+                    }
+                    //free(index);
+                    //add_to_del_list(to_delete, x);
+                    break;
+                }
+            }
 
-                /*Filtro per numero minimo di occorrenze
-                 * to_filter_min_occ[][0] = lettera
-                 * to_filter_min_occ[][1] = numero minimo occorrenze
-                 */
-                if (i < new_min_occ) {
-                    int count = 0;
-                    for (int j = 0; j < k; j++) {
-                        if (word[j] == to_filter_min_occ[i][0])
-                            count++;
-                        if (count > to_filter_min_occ[i][1])break;
+            /*Filtro per numero minimo di occorrenze
+             * to_filter_min_occ[][0] = lettera
+             * to_filter_min_occ[][1] = numero minimo occorrenze
+             */
+            if (i < new_min_occ) {
+                int count = 0;
+                for (int j = 0; j < k; j++) {
+                    if (word[j] == to_filter_min_occ[i][0])
+                        count++;
+                    if (count > to_filter_min_occ[i][1])break;
+                }
+                if (count < to_filter_min_occ[i][1]) {
+                    index->deleted = 1;
+                    num_filtered_nodes--;
+                    if (!index->prev) {
+                        dictionary.head = dictionary.head->next;
+                        if (dictionary.head)dictionary.head->prev = NULL;
+                    } else {
+                        index->prev->next = index->next;
+                        if (index->next)index->next->prev = index->prev;
                     }
-                    if (count < to_filter_min_occ[i][1]) {
-                        index->deleted = 1;
-                        num_filtered_nodes--;
-                        if (!index->prev) {
-                            dictionary.head = dictionary.head->next;
-                            if (dictionary.head)dictionary.head->prev = NULL;
-                        } else {
-                            index->prev->next = index->next;
-                            if (index->next)index->next->prev = index->prev;
-                        }
-                        //free(index);
-                        //add_to_del_list(to_delete, x);
-                        break;
-                    }
+                    //free(index);
+                    //add_to_del_list(to_delete, x);
+                    break;
                 }
             }
         }
@@ -622,7 +624,7 @@ int main() {
                 x = node_buffer + num_nodes * sizeof(node_t);
                 x->word = word_buffer + num_words * sizeof(char[k]);
                 x->deleted = 0;
-                insert(&dictionary, x);
+                insert(x);
                 num_filtered_nodes++;
                 node_t *temp = dictionary.head;
                 dictionary.head = x;
