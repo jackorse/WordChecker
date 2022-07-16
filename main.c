@@ -13,11 +13,11 @@
 #define NUM_NODES_PER_MALLOC_INIT 20000
 #define NUM_NODES_PER_MALLOC 10000
 
-/*
+
 #ifdef EVAL
-char print_buffer[100000];
+char print_buffer[10000];
 #endif
- */
+
 
 typedef struct node {
     struct node *parent;
@@ -150,11 +150,17 @@ void insert(node_t *z) {
     insert_fixup(z);
 }
 
+static inline void print(char *s) {
+    for (int i = 0; i < k; i++)
+        putchar_unlocked(s[i]);
+    putchar_unlocked('\n');
+}
+
 void printTree(const node_t *x) {
     if (x == dictionary.nil)return;
 
     if (x->left != dictionary.nil)printTree(x->left);
-    if (!x->deleted)printf("%.*s\n", k, x->word);
+    if (!x->deleted)print(x->word);
     if (x->right != dictionary.nil)printTree(x->right);
 }
 
@@ -185,47 +191,88 @@ static inline char dehash(int i) {
 }
 
 int check_filters(const char word[k],
-                  const char *in_at,
-                  const char min_occ[ALPHABET_LENGTH],
-                  const char occ[ALPHABET_LENGTH],
-                  const char not_in_at[k][ALPHABET_LENGTH]) {
+                  const char in_at[k][2], const int num_in_at,
+                  const char min_occ[ALPHABET_LENGTH][2], const int num_min_occ,
+                  const char occ[ALPHABET_LENGTH][2], const int num_occ,
+                  const char not_in_at[k * ALPHABET_LENGTH][2], const int num_not_in_at) {
 
     for (int i = 0; i < k; i++) {
-        if (in_at[i] != -1 && word[i] != in_at[i]) {
+        if (i < num_in_at && in_at[i][0] != word[(int) in_at[i][1]]) {
             return 0;
         }
-        for (int j = 0; j < ALPHABET_LENGTH; j++) {
-            if (not_in_at[i][j] && occ[j] != 0 && word[i] == dehash(j)) {
+        for (int j = 0; i * ALPHABET_LENGTH + j < num_not_in_at && j < ALPHABET_LENGTH; j++) {
+            if (not_in_at[i * ALPHABET_LENGTH + j][0] == word[(int) not_in_at[i * ALPHABET_LENGTH + j][1]]) {
                 return 0;
             }
         }
     }
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
-        if (occ[i] >= 0) {
-            char c = dehash(i);
+        if (i < num_occ) {
+            char c = occ[i][0];
             int count = 0;
             for (int j = 0; j < k; j++) {
                 if (word[j] == c)
                     count++;
             }
-            if (count != occ[i])
+            if (count != occ[i][1])
                 return 0;
-        } else if (min_occ[i] > 0) {
-            char c = dehash(i);
+        }
+        if (i < num_min_occ) {
+            char c = min_occ[i][0];
             int count = 0;
             for (int j = 0; j < k; j++) {
                 if (word[j] == c)
                     count++;
             }
-            if (count < min_occ[i])
+            if (count < min_occ[i][1])
                 return 0;
         }
     }
     return 1;
 }
 
-void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALPHABET_LENGTH],
-                      char not_in_at[k][ALPHABET_LENGTH]) {
+void inserisci_inizio(const char in_at[k], const char min_occ[ALPHABET_LENGTH], const char occ[ALPHABET_LENGTH],
+                      const char not_in_at[k][ALPHABET_LENGTH]) {
+    char _occ[ALPHABET_LENGTH][2];
+    int num_occ = 0;
+    char _min_occ[ALPHABET_LENGTH][2];
+    int num_min_occ = 0;
+    char _not_in_at[ALPHABET_LENGTH * k][2];
+    int num_not_in_at = 0;
+    char _in_at[k][2];
+    int num_in_at = 0;
+
+
+    for (int i = 0; i < k; i++) {
+        if (in_at[i] != -1) {
+            _in_at[num_in_at][0] = in_at[i];
+            _in_at[num_in_at][1] = i;
+            num_in_at++;
+        }
+
+        for (int j = 0; j < ALPHABET_LENGTH; j++) {
+            if (not_in_at[i][j] && occ[j] != 0) {
+                _not_in_at[num_not_in_at][0] = dehash(j);
+                _not_in_at[num_not_in_at][1] = i;
+                num_not_in_at++;
+            }
+        }
+    }
+
+    for (int i = 0; i < ALPHABET_LENGTH; i++) {
+        if (occ[i] >= 0) {
+            char c = dehash(i);
+            _occ[num_occ][0] = c;
+            _occ[num_occ][1] = occ[i];
+            num_occ++;
+        } else if (min_occ[i] > 0) {
+            char c = dehash(i);
+            _min_occ[num_min_occ][0] = c;
+            _min_occ[num_min_occ][1] = min_occ[i];
+            num_min_occ++;
+        }
+    }
+
     node_t *new_dict;
     char read[256];
     int num_words = 0;
@@ -260,7 +307,11 @@ void inserisci_inizio(char in_at[k], char min_occ[ALPHABET_LENGTH], char occ[ALP
             new_dict->right = dictionary.nil;
             new_dict->deleted = 1;
             insert(new_dict);
-            if (check_filters(read, in_at, min_occ, occ, not_in_at)) {
+            if (check_filters(read,
+                              _in_at, num_in_at,
+                              _min_occ, num_min_occ,
+                              _occ, num_occ,
+                              _not_in_at, num_not_in_at)) {
                 /*new_filtered = malloc(sizeof(node_t));
                 new_filtered->word = new_dict_word;
                 new_filtered->left = dict->nil;
@@ -488,6 +539,7 @@ void nuova_partita() {
                 for (int j = 0; j < k; j++) {
                     if (res[j] != '+') {
                         int found = 0;
+                        const int hashed = hash(input[j]);
 
                         for (int i = 0; i < k; i++) {
                             if (ref_word[i] == input[j] && used[i] != 1) {
@@ -495,10 +547,10 @@ void nuova_partita() {
 
                                 used[i] = 1;
                                 found = 1;
-                                _min_occ[hash(input[j])]++;
+                                _min_occ[hashed]++;
 
-                                if (!not_in_at[j][hash(input[j])]) {
-                                    not_in_at[j][hash(input[j])] = 1;
+                                if (!not_in_at[j][hashed]) {
+                                    not_in_at[j][hashed] = 1;
                                     to_filter_not_in_at[new_not_in_at][0] = input[j];
                                     to_filter_not_in_at[new_not_in_at][1] = j;
                                     new_not_in_at++;
@@ -506,26 +558,26 @@ void nuova_partita() {
                                 break;
                             }
                         }
-                        if (_min_occ[hash(input[j])] > min_occ[hash(input[j])]) {
-                            min_occ[hash(input[j])] = _min_occ[hash(input[j])];
+                        if (_min_occ[hashed] > min_occ[hashed]) {
+                            min_occ[hashed] = _min_occ[hashed];
                             to_filter_min_occ[new_min_occ][0] = input[j];
-                            to_filter_min_occ[new_min_occ][1] = min_occ[hash(input[j])];
+                            to_filter_min_occ[new_min_occ][1] = min_occ[hashed];
                             new_min_occ++;
                         }
                         if (!found) {
                             res[j] = '/';
                             //not_in[hash(input[j])] = 1;
 
-                            if (occ[hash(input[j])] == -1) {
-                                occ[hash(input[j])] = min_occ[hash(input[j])];
+                            if (occ[hashed] == -1) {
+                                occ[hashed] = min_occ[hashed];
                                 to_filter_occ[new_occ][0] = input[j];
-                                to_filter_occ[new_occ][1] = occ[hash(input[j])];
+                                to_filter_occ[new_occ][1] = occ[hashed];
                                 new_occ++;
                             }
 
-                            if (!not_in_at[j][hash(input[j])]) {
-                                not_in_at[j][hash(input[j])] = 1;
-                                if (occ[hash(input[j])] != 0) {
+                            if (!not_in_at[j][hashed]) {
+                                not_in_at[j][hashed] = 1;
+                                if (occ[hashed] != 0) {
                                     to_filter_not_in_at[new_not_in_at][0] = input[j];
                                     to_filter_not_in_at[new_not_in_at][1] = j;
                                     new_not_in_at++;
@@ -586,11 +638,10 @@ int main() {
 #ifdef DEBUG
     setvbuf(stdout, NULL, _IONBF, 0);
 #endif
-    /*
 #ifdef EVAL
     setvbuf(stdout, print_buffer, _IOFBF, sizeof(print_buffer));
 #endif
-     */
+
     if (scanf("%d", &k)) {
         node_t *x;
         int num_words = 0;
