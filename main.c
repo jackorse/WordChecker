@@ -1,4 +1,6 @@
+#ifdef EVAL
 #define NDEBUG
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -8,8 +10,6 @@
 #define RED 0
 #define BLACK 1
 #define ALPHABET_LENGTH 64
-#define NUM_WORDS_PER_MALLOC_INIT 20000
-#define NUM_WORDS_PER_MALLOC 10000
 #define NUM_NODES_PER_MALLOC_INIT 20000
 #define NUM_NODES_PER_MALLOC 10000
 
@@ -40,13 +40,16 @@ int k;
 RB_tree dictionary;
 int num_filtered_nodes = 0;
 
-static inline int _strcmp(const char s1[k + 1], const char s2[k + 1]) {
-    /*for (int i = 0; i < k; i++) {
+size_t malloc_word_size, malloc_node_size;
+const size_t node_size = sizeof(node_t);
+
+static inline int _strcmp(const char s1[k], const char s2[k]) {
+    for (int i = 0; i < k; i++) {
         if (s1[i] != s2[i])
             return s1[i] - s2[i];
     }
-    return 0;*/
-    return strncmp(s1, s2, k);
+    return 0;
+    //return strncmp(s1, s2, k);
 }
 
 void left_rotate(node_t *x) {
@@ -273,61 +276,55 @@ void inserisci_inizio(const char in_at[k], const char min_occ[ALPHABET_LENGTH], 
         }
     }
 
-    node_t *new_dict;
+    node_t *new_node;
     char read[256];
-    int num_words = 0;
-    char *buffer = malloc(k * NUM_WORDS_PER_MALLOC + 1);
+    char *word_buffer = malloc(malloc_word_size);
+    void *node_buffer = malloc(malloc_node_size);
     int num_nodes = 0;
-    void *node_buffer = malloc(sizeof(node_t) * NUM_NODES_PER_MALLOC);
-    while (1) {
-        if (scanf("%s", read) < 0)break;
-        if (_strcmp(read, "+inserisci_fine") == 0)
+    while (scanf("%s", read) > 0) {
+        if (strcmp(read, "+inserisci_fine") == 0)
             return;
-        if (strlen(read) == k) {
-            //char *new_dict_word = malloc(sizeof(char[k + 1]));
-            //char *new_filtered_word = malloc(sizeof(char[k + 1]));
-            if (num_words >= NUM_WORDS_PER_MALLOC) {
-                buffer = malloc(k * NUM_WORDS_PER_MALLOC + 1);
-                assert(buffer);
-                buffer[0] = '\0';
-                num_words = 0;
-            }
-            if (num_nodes >= NUM_NODES_PER_MALLOC) {
-                node_buffer = malloc(sizeof(node_t) * NUM_NODES_PER_MALLOC);
-                assert(node_buffer);
-                num_nodes = 0;
-            }
-            strncpy(buffer + num_words * sizeof(char[k]), read, k);
-            buffer[num_words * sizeof(char[k]) + k] = '\0';
-
-            //strcpy(new_filtered_word, read);
-            new_dict = node_buffer + num_nodes * sizeof(node_t);
-            new_dict->word = buffer + num_words * sizeof(char[k]);;
-            new_dict->left = dictionary.nil;
-            new_dict->right = dictionary.nil;
-            new_dict->deleted = 1;
-            insert(new_dict);
-            if (check_filters(read,
-                              _in_at, num_in_at,
-                              _min_occ, num_min_occ,
-                              _occ, num_occ,
-                              _not_in_at, num_not_in_at)) {
-                /*new_filtered = malloc(sizeof(node_t));
-                new_filtered->word = new_dict_word;
-                new_filtered->left = dict->nil;
-                new_filtered->right = dict->nil;
-                insert(dict, new_filtered);*/
-                num_filtered_nodes++;
-                new_dict->deleted = 0;
-                node_t *temp = dictionary.head;
-                dictionary.head = new_dict;
-                new_dict->prev = NULL;
-                new_dict->next = temp;
-                if (temp)temp->prev = new_dict;
-            }
-            num_words++;
-            num_nodes++;
+        assert (strlen(read) == k);
+        //char *new_dict_word = malloc(sizeof(char[k + 1]));
+        //char *new_filtered_word = malloc(sizeof(char[k + 1]));
+        if (num_nodes >= NUM_NODES_PER_MALLOC) {
+            node_buffer = malloc(malloc_node_size);
+            assert(node_buffer);
+            word_buffer = malloc(malloc_word_size);
+            assert(word_buffer);
+#ifndef EVAL
+            word_buffer[0] = '\0';
+#endif
+            num_nodes = 0;
         }
+        char *word = word_buffer + num_nodes * k;
+        strncpy(word, read, k);
+#ifndef EVAL
+        word_buffer[num_nodes * k + k] = '\0';
+#endif
+        new_node = node_buffer + num_nodes * node_size;
+        new_node->word = word;
+        insert(new_node);
+        if (check_filters(read,
+                          _in_at, num_in_at,
+                          _min_occ, num_min_occ,
+                          _occ, num_occ,
+                          _not_in_at, num_not_in_at)) {
+            /*new_filtered = malloc(sizeof(node_t));
+            new_filtered->word = new_dict_word;
+            new_filtered->left = dict->nil;
+            new_filtered->right = dict->nil;
+            insert(dict, new_filtered);*/
+            num_filtered_nodes++;
+            new_node->deleted = 0;
+            node_t *temp = dictionary.head;
+            dictionary.head = new_node;
+            new_node->prev = NULL;
+            new_node->next = temp;
+            if (temp)temp->prev = new_node;
+        } else
+            new_node->deleted = 1;
+        num_nodes++;
     }
 }
 
@@ -494,11 +491,12 @@ void nuova_partita() {
     while (n > 0) {
         char input[256];
         if (scanf("%s", input) < 0)break;
-        if (_strcmp(input, "+stampa_filtrate") == 0)
+        if (strcmp(input, "+stampa_filtrate") == 0)
             printTree(dictionary.root);
-        else if (_strcmp(input, "+inserisci_inizio") == 0) {
+        else if (strcmp(input, "+inserisci_inizio") == 0) {
             inserisci_inizio(in_at, min_occ, occ, not_in_at);
-        } else if (strlen(input) == k) {
+        } else {
+            assert(strlen(input) == k);
             if (_strcmp(input, ref_word) == 0) {
                 printf("ok\n");
                 reset(dictionary.root);
@@ -635,45 +633,47 @@ int main() {
     dictionary.nil->color = BLACK;
     dictionary.root = dictionary.nil;
     dictionary.head = NULL;
-#ifdef DEBUG
-    setvbuf(stdout, NULL, _IONBF, 0);
-#endif
 #ifdef EVAL
     setvbuf(stdout, print_buffer, _IOFBF, sizeof(print_buffer));
+#else
+    setvbuf(stdout, NULL, _IONBF, 0);
 #endif
-
     if (scanf("%d", &k)) {
+        malloc_word_size = k * NUM_NODES_PER_MALLOC_INIT + 1;
+        malloc_node_size = node_size * NUM_NODES_PER_MALLOC_INIT;
         node_t *x;
-        int num_words = 0;
-        char *word_buffer = malloc(k * NUM_WORDS_PER_MALLOC_INIT + 1);
+        char *word_buffer = malloc(malloc_word_size);
+        void *node_buffer = malloc(malloc_node_size);
         int num_nodes = 0;
-        void *node_buffer = malloc(sizeof(node_t) * NUM_NODES_PER_MALLOC_INIT);
         char adding_words = 1;
         char read[256];
-        while (1) {
-            if (scanf("%s", read) < 0)break;
-            if (_strcmp(read, "+nuova_partita") == 0)
-                nuova_partita();
-            else if (_strcmp(read, "+inserisci_inizio") == 0)
-                adding_words = 1;
-            else if (_strcmp(read, "+inserisci_fine") == 0)
+        while (scanf("%s", read) > 0) {
+            if (strcmp(read, "+nuova_partita") == 0) {
                 adding_words = 0;
-            else if (strlen(read) == k && adding_words) {
-                if (num_words >= NUM_WORDS_PER_MALLOC_INIT) {
-                    word_buffer = malloc(k * NUM_WORDS_PER_MALLOC_INIT + 1);
-                    assert(word_buffer);
-                    word_buffer[0] = '\0';
-                    num_words = 0;
-                }
+                nuova_partita();
+            } else if (!adding_words && strcmp(read, "+inserisci_inizio") == 0)
+                adding_words = 1;
+            else if (adding_words && strcmp(read, "+inserisci_fine") == 0)
+                adding_words = 0;
+            else if (adding_words && strcmp(read, "+stampa_filtrate") != 0) {
+                assert(strlen(read) == k);
                 if (num_nodes >= NUM_NODES_PER_MALLOC_INIT) {
-                    node_buffer = malloc(sizeof(node_t) * NUM_NODES_PER_MALLOC_INIT);
+                    node_buffer = malloc(malloc_node_size);
                     assert(node_buffer);
+                    word_buffer = malloc(malloc_word_size);
+                    assert(word_buffer);
+#ifndef EVAL
+                    word_buffer[0] = '\0';
+#endif
                     num_nodes = 0;
                 }
-                strncpy(word_buffer + num_words * sizeof(char[k]), read, k);
-                word_buffer[num_words * sizeof(char[k]) + k] = '\0';
-                x = node_buffer + num_nodes * sizeof(node_t);
-                x->word = word_buffer + num_words * sizeof(char[k]);
+                char *word = word_buffer + num_nodes * k;
+                strncpy(word, read, k);
+#ifndef EVAL
+                word_buffer[num_nodes * k + k] = '\0';
+#endif
+                x = node_buffer + num_nodes * node_size;
+                x->word = word;
                 x->deleted = 0;
                 insert(x);
                 num_filtered_nodes++;
@@ -682,7 +682,6 @@ int main() {
                 x->prev = NULL;
                 x->next = temp;
                 if (temp)temp->prev = x;
-                num_words++;
                 num_nodes++;
             }
         }
