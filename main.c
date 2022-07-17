@@ -588,18 +588,30 @@ void nuova_partita() {
                 for (int h = 0; h < new_occ; h++) {
                     for (int h2 = h + 1; h2 < new_occ; h2++) {
                         if (to_filter_occ[h][0] == to_filter_occ[h2][0]) {
-                            to_filter_occ[h2][0] = to_filter_occ[new_occ - 1][0];
-                            to_filter_occ[h2][1] = to_filter_occ[new_occ - 1][1];
+                            if (to_filter_occ[h][1] > to_filter_occ[h2][1]) {
+                                to_filter_occ[h2][0] = to_filter_occ[new_occ - 1][0];
+                                to_filter_occ[h2][1] = to_filter_occ[new_occ - 1][1];
+                            } else {
+                                to_filter_occ[h][0] = to_filter_occ[new_occ - 1][0];
+                                to_filter_occ[h][1] = to_filter_occ[new_occ - 1][1];
+                            }
                             new_occ--;
+                            h2--;
                         }
                     }
                 }
                 for (int h = 0; h < new_min_occ; h++) {
                     for (int h2 = h + 1; h2 < new_min_occ; h2++) {
                         if (to_filter_min_occ[h][0] == to_filter_min_occ[h2][0]) {
-                            to_filter_min_occ[h2][0] = to_filter_min_occ[new_min_occ - 1][0];
-                            to_filter_min_occ[h2][1] = to_filter_min_occ[new_min_occ - 1][1];
+                            if (to_filter_min_occ[h][1] > to_filter_min_occ[h2][1]) {
+                                to_filter_min_occ[h2][0] = to_filter_min_occ[new_min_occ - 1][0];
+                                to_filter_min_occ[h2][1] = to_filter_min_occ[new_min_occ - 1][1];
+                            } else {
+                                to_filter_min_occ[h][0] = to_filter_min_occ[new_min_occ - 1][0];
+                                to_filter_min_occ[h][1] = to_filter_min_occ[new_min_occ - 1][1];
+                            }
                             new_min_occ--;
+                            h2--;
                         }
                     }
                 }
