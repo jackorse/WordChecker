@@ -286,8 +286,6 @@ void inserisci_inizio(const char in_at[k], const char min_occ[ALPHABET_LENGTH], 
         if (strcmp(read, "+inserisci_fine") == 0)
             return;
         assert (strlen(read) == k);
-        //char *new_dict_word = malloc(sizeof(char[k + 1]));
-        //char *new_filtered_word = malloc(sizeof(char[k + 1]));
         if (num_nodes >= NUM_NODES_PER_MALLOC) {
             node_buffer = malloc(malloc_node_size);
             assert(node_buffer);
@@ -311,11 +309,6 @@ void inserisci_inizio(const char in_at[k], const char min_occ[ALPHABET_LENGTH], 
                           _min_occ, num_min_occ,
                           _occ, num_occ,
                           _not_in_at, num_not_in_at)) {
-            /*new_filtered = malloc(sizeof(node_t));
-            new_filtered->word = new_dict_word;
-            new_filtered->left = dict->nil;
-            new_filtered->right = dict->nil;
-            insert(dict, new_filtered);*/
             num_filtered_nodes++;
             new_node->deleted = 0;
             node_t *temp = dictionary.head;
@@ -333,8 +326,7 @@ void apply_filters(
         const int to_filter_occ[][2], const int new_occ,
         const int to_filter_in_at[][2], const int new_in_at,
         const int to_filter_min_occ[][2], const int new_min_occ,
-        const int to_filter_not_in_at[][2], const int new_not_in_at
-        /*list to_delete[hash_table_length]*/) {
+        const int to_filter_not_in_at[][2], const int new_not_in_at) {
     if (num_filtered_nodes <= 0)return;
     node_t *index = dictionary.head;
     while (index) {
@@ -351,7 +343,6 @@ void apply_filters(
                 if (word[(int) to_filter_in_at[i][1]] != to_filter_in_at[i][0]) {
                     index->deleted = 1;
                     num_filtered_nodes--;
-                    //add_to_del_list(to_delete, x);
                     if (!index->prev) {
                         dictionary.head = dictionary.head->next;
                         if (dictionary.head)dictionary.head->prev = NULL;
@@ -359,7 +350,6 @@ void apply_filters(
                         index->prev->next = index->next;
                         if (index->next)index->next->prev = index->prev;
                     }
-                    //free(index);
                     break;
                 }
             }
@@ -379,8 +369,6 @@ void apply_filters(
                         index->prev->next = index->next;
                         if (index->next)index->next->prev = index->prev;
                     }
-                    //free(index);
-                    //add_to_del_list(to_delete, x);
                     break;
                 }
             }
@@ -407,8 +395,6 @@ void apply_filters(
                         index->prev->next = index->next;
                         if (index->next)index->next->prev = index->prev;
                     }
-                    //free(index);
-                    //add_to_del_list(to_delete, x);
                     break;
                 }
             }
@@ -434,8 +420,6 @@ void apply_filters(
                         index->prev->next = index->next;
                         if (index->next)index->next->prev = index->prev;
                     }
-                    //free(index);
-                    //add_to_del_list(to_delete, x);
                     break;
                 }
             }
@@ -462,27 +446,17 @@ void reset(node_t *x) {
 
 void nuova_partita() {
     char ref_word[k + 1];
-    //num_filtered_nodes = count(&dictionary, dictionary.root);
-    //char not_in[ALPHABET_LENGTH] = {0};
     char min_occ[ALPHABET_LENGTH] = {0};
-    //char min_occ_applied[ALPHABET_LENGTH] = {0};
     char occ[ALPHABET_LENGTH];
-    //char occ_applied[ALPHABET_LENGTH] = {0};
     char in_at[k];
-    //char in_at_applied[k];
     char not_in_at[k][ALPHABET_LENGTH];
-    //char not_in_at_applied[k][ALPHABET_LENGTH];
     for (int i = 0; i < k; i++) {
         in_at[i] = -1;
-        //in_at_applied[i] = 0;
     }
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
         occ[i] = -1;
-    }
-    for (int i = 0; i < k; i++) {
-        for (int j = 0; j < ALPHABET_LENGTH; j++) {
-            not_in_at[i][j] = 0;
-            //not_in_at_applied[i][j] = 0;
+        for (int j = 0; j < k; j++) {
+            not_in_at[j][i] = 0;
         }
     }
 
@@ -565,7 +539,6 @@ void nuova_partita() {
                         }
                         if (!found) {
                             res[j] = '/';
-                            //not_in[hash(input[j])] = 1;
 
                             if (occ[hashed] == -1) {
                                 occ[hashed] = min_occ[hashed];
@@ -621,7 +594,6 @@ void nuova_partita() {
                     apply_filters(to_filter_occ, new_occ, to_filter_in_at,
                                   new_in_at,
                                   to_filter_min_occ, new_min_occ, to_filter_not_in_at, new_not_in_at);
-                    //num_filtered_nodes -= delete_in(&dictionary, to_delete);
                 }
 
                 for (int j = 0; j < k; j++) {
@@ -630,7 +602,6 @@ void nuova_partita() {
 
                 printf("\n%d\n", num_filtered_nodes);
                 n--;
-                //printf("CICLI: %d\n", ccc);
             } else {
                 printf("not_exists\n");
             }
