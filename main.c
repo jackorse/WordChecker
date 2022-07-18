@@ -42,6 +42,7 @@ int num_filtered_nodes = 0;
 
 size_t malloc_word_size, malloc_node_size;
 const size_t node_size = sizeof(node_t);
+int read_length = 64;
 
 static inline int _strcmp(const char s1[k], const char s2[k]) {
     for (int i = 0; i < k; i++) {
@@ -194,10 +195,10 @@ static inline char dehash(int i) {
 }
 
 int check_filters(const char word[k],
-                  const char in_at[k][2], const int num_in_at,
-                  const char min_occ[ALPHABET_LENGTH][2], const int num_min_occ,
-                  const char occ[ALPHABET_LENGTH][2], const int num_occ,
-                  const char not_in_at[k * ALPHABET_LENGTH][2], const int num_not_in_at) {
+                  const int in_at[k][2], const int num_in_at,
+                  const int min_occ[ALPHABET_LENGTH][2], const int num_min_occ,
+                  const int occ[ALPHABET_LENGTH][2], const int num_occ,
+                  const int not_in_at[k * ALPHABET_LENGTH][2], const int num_not_in_at) {
 
     for (int i = 0; i < k; i++) {
         if (i < num_in_at && in_at[i][0] != word[(int) in_at[i][1]]) {
@@ -236,13 +237,13 @@ int check_filters(const char word[k],
 
 void inserisci_inizio(const char in_at[k], const char min_occ[ALPHABET_LENGTH], const char occ[ALPHABET_LENGTH],
                       const char not_in_at[k][ALPHABET_LENGTH]) {
-    char _occ[ALPHABET_LENGTH][2];
+    int _occ[ALPHABET_LENGTH][2];
     int num_occ = 0;
-    char _min_occ[ALPHABET_LENGTH][2];
+    int _min_occ[ALPHABET_LENGTH][2];
     int num_min_occ = 0;
-    char _not_in_at[ALPHABET_LENGTH * k][2];
+    int _not_in_at[ALPHABET_LENGTH * k][2];
     int num_not_in_at = 0;
-    char _in_at[k][2];
+    int _in_at[k][2];
     int num_in_at = 0;
 
 
@@ -277,7 +278,7 @@ void inserisci_inizio(const char in_at[k], const char min_occ[ALPHABET_LENGTH], 
     }
 
     node_t *new_node;
-    char read[256];
+    char read[read_length];
     char *word_buffer = malloc(malloc_word_size);
     void *node_buffer = malloc(malloc_node_size);
     int num_nodes = 0;
@@ -329,10 +330,10 @@ void inserisci_inizio(const char in_at[k], const char min_occ[ALPHABET_LENGTH], 
 }
 
 void apply_filters(
-        const char to_filter_occ[][2], const int new_occ,
-        const char to_filter_in_at[][2], const int new_in_at,
-        const char to_filter_min_occ[][2], const int new_min_occ,
-        const char to_filter_not_in_at[][2], const int new_not_in_at
+        const int to_filter_occ[][2], const int new_occ,
+        const int to_filter_in_at[][2], const int new_in_at,
+        const int to_filter_min_occ[][2], const int new_min_occ,
+        const int to_filter_not_in_at[][2], const int new_not_in_at
         /*list to_delete[hash_table_length]*/) {
     if (num_filtered_nodes <= 0)return;
     node_t *index = dictionary.head;
@@ -489,7 +490,7 @@ void nuova_partita() {
     int n;
     if (!scanf("%d", &n)) return;
     while (n > 0) {
-        char input[256];
+        char input[read_length];
         if (scanf("%s", input) < 0)break;
         if (strcmp(input, "+stampa_filtrate") == 0)
             printTree(dictionary.root);
@@ -507,12 +508,12 @@ void nuova_partita() {
                 char used[k];
 
                 int new_occ = 0;
-                char to_filter_occ[k][2];
-                char to_filter_in_at[k][2];
+                int to_filter_occ[k][2];
+                int to_filter_in_at[k][2];
                 int new_in_at = 0;
-                char to_filter_min_occ[k][2];
+                int to_filter_min_occ[k][2];
                 int new_min_occ = 0;
-                char to_filter_not_in_at[k][2];
+                int to_filter_not_in_at[k][2];
                 int new_not_in_at = 0;
 
                 for (int i = 0; i < k; i++) {
@@ -653,17 +654,18 @@ int main() {
     if (scanf("%d", &k)) {
         malloc_word_size = k * NUM_NODES_PER_MALLOC_INIT + 1;
         malloc_node_size = node_size * NUM_NODES_PER_MALLOC_INIT;
+        if (k >= 64) read_length = k + 1;
         node_t *x;
         char *word_buffer = malloc(malloc_word_size);
         void *node_buffer = malloc(malloc_node_size);
         int num_nodes = 0;
         char adding_words = 1;
-        char read[256];
+        char read[read_length];
         while (scanf("%s", read) > 0) {
             if (strcmp(read, "+nuova_partita") == 0) {
                 adding_words = 0;
                 nuova_partita();
-            } else if (!adding_words && strcmp(read, "+inserisci_inizio") == 0)
+            } else if (strcmp(read, "+inserisci_inizio") == 0)
                 adding_words = 1;
             else if (adding_words && strcmp(read, "+inserisci_fine") == 0)
                 adding_words = 0;
