@@ -24,8 +24,8 @@ typedef struct node {
     struct node *parent;
     struct node *left;
     struct node *right;
-    struct node *prev;
     struct node *next;
+    struct node *next_to_free;
     char *word;
     char color;
     bool deleted;
@@ -34,6 +34,7 @@ typedef struct node {
 typedef struct tree {
     node_t *root;
     node_t *head;
+    node_t *head_to_free;
     node_t *nil;
 } RB_tree;
 
@@ -307,6 +308,10 @@ void inserisci_inizio(const char in_at[k], const int min_occ[ALPHABET_LENGTH], c
 #endif
         new_node = node_buffer + num_nodes * node_size;
         new_node->word = word;
+        if (num_nodes == 0) {
+            new_node->next_to_free = dictionary.head_to_free;
+            dictionary.head_to_free = new_node;
+        }
         insert(new_node);
         if (check_filters(read,
                           _in_at, num_in_at,
@@ -317,9 +322,7 @@ void inserisci_inizio(const char in_at[k], const int min_occ[ALPHABET_LENGTH], c
             new_node->deleted = false;
             node_t *temp = dictionary.head;
             dictionary.head = new_node;
-            new_node->prev = NULL;
             new_node->next = temp;
-            if (temp)temp->prev = new_node;
         } else
             new_node->deleted = true;
         num_nodes++;
@@ -333,9 +336,11 @@ void apply_filters(
         const int to_filter_not_in_at[][2], const int new_not_in_at) {
     if (num_filtered_nodes <= 0)return;
     node_t *index = dictionary.head;
+    node_t *prev = NULL, *next;
     while (index) {
         assert(!index->deleted);
-        node_t *succ = index->next;
+        bool deleted = false;
+        next = index->next;
         char *word = index->word;
         for (int i = 0; i < k; i++) {
 
@@ -347,13 +352,12 @@ void apply_filters(
                 if (word[to_filter_in_at[i][1]] != to_filter_in_at[i][0]) {
                     index->deleted = true;
                     num_filtered_nodes--;
-                    if (!index->prev) {
+                    if (!prev) {
                         dictionary.head = dictionary.head->next;
-                        if (dictionary.head)dictionary.head->prev = NULL;
                     } else {
-                        index->prev->next = index->next;
-                        if (index->next)index->next->prev = index->prev;
+                        prev->next = index->next;
                     }
+                    deleted = true;
                     break;
                 }
             }
@@ -366,13 +370,12 @@ void apply_filters(
                 if (word[to_filter_not_in_at[i][1]] == to_filter_not_in_at[i][0]) {
                     index->deleted = true;
                     num_filtered_nodes--;
-                    if (!index->prev) {
+                    if (!prev) {
                         dictionary.head = dictionary.head->next;
-                        if (dictionary.head)dictionary.head->prev = NULL;
                     } else {
-                        index->prev->next = index->next;
-                        if (index->next)index->next->prev = index->prev;
+                        prev->next = index->next;
                     }
+                    deleted = true;
                     break;
                 }
             }
@@ -392,13 +395,12 @@ void apply_filters(
                 if (to_filter_occ[i][1] != count) {
                     index->deleted = true;
                     num_filtered_nodes--;
-                    if (!index->prev) {
+                    if (!prev) {
                         dictionary.head = dictionary.head->next;
-                        if (dictionary.head)dictionary.head->prev = NULL;
                     } else {
-                        index->prev->next = index->next;
-                        if (index->next)index->next->prev = index->prev;
+                        prev->next = index->next;
                     }
+                    deleted = true;
                     break;
                 }
             }
@@ -417,18 +419,19 @@ void apply_filters(
                 if (count < to_filter_min_occ[i][1]) {
                     index->deleted = true;
                     num_filtered_nodes--;
-                    if (!index->prev) {
+                    if (!prev) {
                         dictionary.head = dictionary.head->next;
-                        if (dictionary.head)dictionary.head->prev = NULL;
                     } else {
-                        index->prev->next = index->next;
-                        if (index->next)index->next->prev = index->prev;
+                        prev->next = index->next;
                     }
+                    deleted = true;
                     break;
                 }
             }
         }
-        index = succ;
+        if (!deleted)
+            prev = index;
+        index = next;
     }
 }
 
@@ -442,9 +445,7 @@ void reset(node_t *x) {
         num_filtered_nodes++;
         node_t *temp = dictionary.head;
         dictionary.head = x;
-        x->prev = NULL;
         x->next = temp;
-        if (temp)temp->prev = x;
     }
 }
 
@@ -611,12 +612,24 @@ void nuova_partita() {
     reset(dictionary.root);
 }
 
+
+void free_tree() {
+    node_t *index = dictionary.head_to_free;
+    while (index) {
+        node_t *temp = index->next_to_free;
+        free(index->word);
+        free(index);
+        index = temp;
+    }
+}
+
 int main() {
     dictionary.nil = malloc(sizeof(node_t));
     dictionary.nil->word = NULL;
     dictionary.nil->color = BLACK;
     dictionary.root = dictionary.nil;
     dictionary.head = NULL;
+    dictionary.head_to_free = NULL;
 #ifdef EVAL
     setvbuf(stdout, print_buffer, _IOFBF, sizeof(print_buffer));
 #else
@@ -663,17 +676,21 @@ int main() {
 #endif
                 x = node_buffer + num_nodes * node_size;
                 x->word = word;
-                x->deleted = 0;
+                x->deleted= false;
+                if (num_nodes == 0) {
+                    x->next_to_free = dictionary.head_to_free;
+                    dictionary.head_to_free = x;
+                }
                 insert(x);
                 num_filtered_nodes++;
                 node_t *temp = dictionary.head;
                 dictionary.head = x;
-                x->prev = NULL;
                 x->next = temp;
-                if (temp)temp->prev = x;
                 num_nodes++;
             }
         }
+        free_tree();
+        free(dictionary.nil);
     }
     return 0;
 }
