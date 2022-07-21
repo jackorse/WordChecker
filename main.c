@@ -13,6 +13,7 @@
 #define ALPHABET_LENGTH 64
 #define NUM_NODES_PER_MALLOC_INIT 20000
 #define NUM_NODES_PER_MALLOC 10000
+#define NUM_EL_FREE_LIST 100
 
 
 #ifdef EVAL
@@ -25,7 +26,6 @@ typedef struct node {
     struct node *left;
     struct node *right;
     struct node *next;
-    struct node *next_to_free;
     char *word;
     char color;
     bool deleted;
@@ -34,7 +34,6 @@ typedef struct node {
 typedef struct tree {
     node_t *root;
     node_t *head;
-    node_t *head_to_free;
     node_t *nil;
 } RB_tree;
 
@@ -45,6 +44,8 @@ int num_filtered_nodes = 0;
 size_t malloc_word_size, malloc_node_size;
 const size_t node_size = sizeof(node_t);
 int read_length = 64;
+void *(*to_free_list)[2];
+int num_el_to_free = 0;
 
 static inline int _strcmp(const char s1[k], const char s2[k]) {
     for (int i = 0; i < k; i++) {
@@ -240,6 +241,20 @@ bool check_filters(const char word[k],
     return true;
 }
 
+static inline void add_to_free_list(node_t *node, char *word) {
+    if (num_el_to_free % NUM_EL_FREE_LIST == 0) {
+        to_free_list = realloc(to_free_list, num_el_to_free * sizeof(*to_free_list) +
+                                             NUM_EL_FREE_LIST * sizeof(*to_free_list));
+#ifndef EVAL
+        fprintf(stderr, "REALLOC: %d\n", num_el_to_free);
+#endif
+    }
+    to_free_list[num_el_to_free][0] = node;
+    to_free_list[num_el_to_free][1] = word;
+    num_el_to_free++;
+
+}
+
 void inserisci_inizio(const char in_at[k], const int min_occ[ALPHABET_LENGTH], const int occ[ALPHABET_LENGTH],
                       const char not_in_at[k][ALPHABET_LENGTH]) {
     int _occ[ALPHABET_LENGTH][2];
@@ -286,6 +301,7 @@ void inserisci_inizio(const char in_at[k], const int min_occ[ALPHABET_LENGTH], c
     char read[read_length];
     char *word_buffer = malloc(malloc_word_size);
     void *node_buffer = malloc(malloc_node_size);
+    add_to_free_list(node_buffer, word_buffer);
     int num_nodes = 0;
     while (scanf("%s", read) > 0) {
         if (strcmp(read, "+inserisci_fine") == 0)
@@ -300,6 +316,7 @@ void inserisci_inizio(const char in_at[k], const int min_occ[ALPHABET_LENGTH], c
             word_buffer[0] = '\0';
 #endif
             num_nodes = 0;
+            add_to_free_list(node_buffer, word_buffer);
         }
         char *word = word_buffer + num_nodes * k;
         strncpy(word, read, k);
@@ -308,10 +325,6 @@ void inserisci_inizio(const char in_at[k], const int min_occ[ALPHABET_LENGTH], c
 #endif
         new_node = node_buffer + num_nodes * node_size;
         new_node->word = word;
-        if (num_nodes == 0) {
-            new_node->next_to_free = dictionary.head_to_free;
-            dictionary.head_to_free = new_node;
-        }
         insert(new_node);
         if (check_filters(read,
                           _in_at, num_in_at,
@@ -614,12 +627,9 @@ void nuova_partita() {
 
 
 void free_tree() {
-    node_t *index = dictionary.head_to_free;
-    while (index) {
-        node_t *temp = index->next_to_free;
-        free(index->word);
-        free(index);
-        index = temp;
+    for (int i = 0; i < num_el_to_free; i++) {
+        free(to_free_list[i][0]);
+        free(to_free_list[i][1]);
     }
 }
 
@@ -629,7 +639,6 @@ int main() {
     dictionary.nil->color = BLACK;
     dictionary.root = dictionary.nil;
     dictionary.head = NULL;
-    dictionary.head_to_free = NULL;
 #ifdef EVAL
     setvbuf(stdout, print_buffer, _IOFBF, sizeof(print_buffer));
 #else
@@ -646,6 +655,7 @@ int main() {
         node_t *x;
         char *word_buffer = malloc(malloc_word_size);
         void *node_buffer = malloc(malloc_node_size);
+        add_to_free_list(node_buffer, word_buffer);
         int num_nodes = 0;
         bool adding_words = true;
         char read[read_length];
@@ -668,6 +678,7 @@ int main() {
                     word_buffer[0] = '\0';
 #endif
                     num_nodes = 0;
+                    add_to_free_list(node_buffer, word_buffer);
                 }
                 char *word = word_buffer + num_nodes * k;
                 strncpy(word, read, k);
@@ -676,11 +687,7 @@ int main() {
 #endif
                 x = node_buffer + num_nodes * node_size;
                 x->word = word;
-                x->deleted= false;
-                if (num_nodes == 0) {
-                    x->next_to_free = dictionary.head_to_free;
-                    dictionary.head_to_free = x;
-                }
+                x->deleted = false;
                 insert(x);
                 num_filtered_nodes++;
                 node_t *temp = dictionary.head;
@@ -691,6 +698,7 @@ int main() {
         }
         free_tree();
         free(dictionary.nil);
+        free(to_free_list);
     }
     return 0;
 }
