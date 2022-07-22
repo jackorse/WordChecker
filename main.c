@@ -322,7 +322,7 @@ void inserisci_inizio(const char in_at[k], const int min_occ[ALPHABET_LENGTH], c
     int num_not_in_at = 0;
     int _in_at[k][2];
     int num_in_at = 0;
-    
+
     for (int i = 0; i < k; i++) {
         if (in_at[i] != -1) {
             _in_at[num_in_at][0] = in_at[i];
@@ -486,6 +486,11 @@ void reset(node_t *x) {
     }
 }
 
+int cmp(const void *v1, const void *v2) {
+    if (((int *) v1)[0] != ((int *) v2)[0])return ((int *) v1)[0] - ((int *) v2)[0];
+    return ((int *) v1)[1] - ((int *) v2)[1];
+}
+
 void nuova_partita() {
     char ref_word[k + 1];
     int min_occ[ALPHABET_LENGTH] = {0};
@@ -596,34 +601,15 @@ void nuova_partita() {
                     }
                 }
 
-                for (int h = 0; h < new_occ; h++) {
-                    for (int h2 = h + 1; h2 < new_occ; h2++) {
-                        if (to_filter_occ[h][0] == to_filter_occ[h2][0]) {
-                            if (to_filter_occ[h][1] > to_filter_occ[h2][1]) {
-                                to_filter_occ[h2][0] = to_filter_occ[new_occ - 1][0];
-                                to_filter_occ[h2][1] = to_filter_occ[new_occ - 1][1];
-                            } else {
-                                to_filter_occ[h][0] = to_filter_occ[new_occ - 1][0];
-                                to_filter_occ[h][1] = to_filter_occ[new_occ - 1][1];
-                            }
-                            new_occ--;
-                            h2--;
+                qsort(to_filter_min_occ, new_min_occ, sizeof(int) * 2, cmp);
+                for (int h = 0; h < new_min_occ - 1; h++) {
+                    if (to_filter_min_occ[h][0] == to_filter_min_occ[h + 1][0]) {
+                        for (int i = h; i < new_min_occ - 1; i++) {
+                            to_filter_min_occ[i][0] = to_filter_min_occ[i + 1][0];
+                            to_filter_min_occ[i][1] = to_filter_min_occ[i + 1][1];
                         }
-                    }
-                }
-                for (int h = 0; h < new_min_occ; h++) {
-                    for (int h2 = h + 1; h2 < new_min_occ; h2++) {
-                        if (to_filter_min_occ[h][0] == to_filter_min_occ[h2][0]) {
-                            if (to_filter_min_occ[h][1] > to_filter_min_occ[h2][1]) {
-                                to_filter_min_occ[h2][0] = to_filter_min_occ[new_min_occ - 1][0];
-                                to_filter_min_occ[h2][1] = to_filter_min_occ[new_min_occ - 1][1];
-                            } else {
-                                to_filter_min_occ[h][0] = to_filter_min_occ[new_min_occ - 1][0];
-                                to_filter_min_occ[h][1] = to_filter_min_occ[new_min_occ - 1][1];
-                            }
-                            new_min_occ--;
-                            h2--;
-                        }
+                        new_min_occ--;
+                        h--;
                     }
                 }
 
