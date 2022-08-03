@@ -53,31 +53,31 @@ static inline int _strcmp(const char s1[k], const char s2[k]) {
     //return strncmp(s1, s2, k);
 }
 
-static inline bool is_deleted(const node_t *node) {
+static inline bool is_deleted(const node_t *const node) {
     return (uintptr_t) node->parent & 1;
 }
 
-static inline void set_deleted(node_t *node, const bool deleted) {
+static inline void set_deleted(node_t *const node, const bool deleted) {
     node->parent = (node_t *) (((uintptr_t) node->parent & 0xFFFFFFFFFFFFFFFE) | deleted);
 }
 
-static inline unsigned char get_color(const node_t *node) {
+static inline unsigned char get_color(const node_t *const node) {
     return ((uintptr_t) node->parent & 2) >> 1;
 }
 
-static inline void set_color(node_t *node, const unsigned char color) {
+static inline void set_color(node_t *const node, const unsigned char color) {
     node->parent = (node_t *) (((uintptr_t) node->parent & 0xFFFFFFFFFFFFFFFD) | (color << 1));
 }
 
-static inline node_t *get_parent(const node_t *node) {
+static inline node_t *get_parent(const node_t *const node) {
     return (node_t *) ((uintptr_t) node->parent & 0xFFFFFFFFFFFFFFFC);
 }
 
-static inline void set_parent(node_t *node, const node_t *parent) {
+static inline void set_parent(node_t *const node, const node_t *const parent) {
     node->parent = (node_t *) (((uintptr_t) node->parent & 0x3) | ((uintptr_t) parent & 0xFFFFFFFFFFFFFFFC));
 }
 
-void left_rotate(node_t *x) {
+void left_rotate(node_t *const x) {
     node_t *y = x->right;
     x->right = y->left; //il sottoalbero sinistro di y diventa quello destro di x
     if (y->left != dictionary.nil)
@@ -93,7 +93,7 @@ void left_rotate(node_t *x) {
     set_parent(x, y);
 }
 
-void right_rotate(node_t *x) {
+void right_rotate(node_t *const x) {
     node_t *y = x->left;
     x->left = y->right; //il sottoalbero sinistro di y diventa quello destro di x
     if (y->right != dictionary.nil)
@@ -155,7 +155,7 @@ void insert_fixup(node_t *z) {
     }
 }
 
-void insert(node_t *z) {
+void insert(node_t *const z) {
     node_t *y = dictionary.nil; // y padre del nodo considerato
     node_t *x = dictionary.root; // nodo considerato
     char *z_word = z->word;
@@ -185,15 +185,13 @@ static inline void print(const char s[k]) {
     putchar_unlocked('\n');
 }
 
-void print_tree(const node_t *x) {
-    if (x == dictionary.nil)return;
-
+void print_tree(const node_t *const x) {
     if (x->left != dictionary.nil)print_tree(x->left);
     if (!is_deleted(x))print(x->word);
     if (x->right != dictionary.nil)print_tree(x->right);
 }
 
-bool is_present(const node_t *x, const char word[k]) {
+bool is_present(const node_t *const x, const char word[k]) {
     if (x == dictionary.nil)
         return false;
     else if (_strcmp(word, x->word) == 0)
@@ -240,7 +238,7 @@ bool check_filters(const char word[k],
     }
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
         if (i < num_occ) {
-            char c = occ[i][0];
+            const char c = occ[i][0];
             int count = 0;
             for (int j = 0; j < k; j++) {
                 if (word[j] == c)
@@ -250,7 +248,7 @@ bool check_filters(const char word[k],
                 return false;
         }
         if (i < num_min_occ) {
-            char c = min_occ[i][0];
+            const char c = min_occ[i][0];
             int count = 0;
             for (int j = 0; j < k; j++) {
                 if (word[j] == c)
@@ -263,7 +261,7 @@ bool check_filters(const char word[k],
     return true;
 }
 
-static inline void add_to_free_list(node_t *node, char *word) {
+static inline void add_to_free_list(node_t *const node_buffer, char *const word_buffer) {
     if (num_el_to_free % NUM_EL_FREE_LIST == 0) {
         to_free_list = realloc(to_free_list, num_el_to_free * sizeof(*to_free_list) +
                                              NUM_EL_FREE_LIST * sizeof(*to_free_list));
@@ -271,14 +269,14 @@ static inline void add_to_free_list(node_t *node, char *word) {
         fprintf(stderr, "REALLOC: %d\n", num_el_to_free);
 #endif
     }
-    to_free_list[num_el_to_free][0] = node;
-    to_free_list[num_el_to_free][1] = word;
+    to_free_list[num_el_to_free][0] = node_buffer;
+    to_free_list[num_el_to_free][1] = word_buffer;
     num_el_to_free++;
 }
 
 static inline void add_node(const char read[k], const bool filtered) {
-    static char *word_buffer;
-    static node_t *node_buffer;
+    static char *word_buffer = NULL;
+    static node_t *node_buffer = NULL;
     static int num_nodes = 0;
 
     if (!node_buffer || num_nodes >= NUM_NODES_PER_MALLOC) {
@@ -341,12 +339,12 @@ void inserisci_inizio(const char in_at[k], const int min_occ[ALPHABET_LENGTH], c
 
     for (int i = 0; i < ALPHABET_LENGTH; i++) {
         if (occ[i] >= 0) {
-            char c = dehash(i);
+            const char c = dehash(i);
             _occ[num_occ][0] = c;
             _occ[num_occ][1] = occ[i];
             num_occ++;
         } else if (min_occ[i] > 0) {
-            char c = dehash(i);
+            const char c = dehash(i);
             _min_occ[num_min_occ][0] = c;
             _min_occ[num_min_occ][1] = min_occ[i];
             num_min_occ++;
@@ -371,14 +369,14 @@ void apply_filters(
         const int to_filter_in_at[][2], const int new_in_at,
         const int to_filter_min_occ[][2], const int new_min_occ,
         const int to_filter_not_in_at[][2], const int new_not_in_at) {
-    if (num_filtered_nodes <= 0)return;
     node_t *index = dictionary.head;
     node_t *prev = NULL, *next;
+    const char *word;
     while (index) {
         assert(!is_deleted(index));
         bool deleted = false;
         next = index->next;
-        char *word = index->word;
+        word = index->word;
         for (int i = 0; i < k; i++) {
 
             /*Filtro per lettere già trovate
@@ -472,8 +470,7 @@ void apply_filters(
     }
 }
 
-void reset(node_t *x) {
-    if (x == dictionary.nil) return;
+void reset(node_t *const x) {
     if (x->left != dictionary.nil) reset(x->left);
     if (x->right != dictionary.nil) reset(x->right);
 
@@ -503,20 +500,23 @@ void nuova_partita() {
     memset(not_in_at, 0, k * ALPHABET_LENGTH);
 
     if (!scanf("%s", ref_word)) return;
+    assert(is_present(dictionary.root, ref_word));
     int n;
     if (!scanf("%d", &n)) return;
     while (n > 0) {
         char input[read_length];
         if (scanf("%s", input) < 0)break;
-        if (strcmp(input, "+stampa_filtrate") == 0)
+        if (strcmp(input, "+stampa_filtrate") == 0 && num_filtered_nodes > 0) {
+            assert(dictionary.root != dictionary.nil);
             print_tree(dictionary.root);
-        else if (strcmp(input, "+inserisci_inizio") == 0) {
+        } else if (strcmp(input, "+inserisci_inizio") == 0) {
             inserisci_inizio(in_at, min_occ, occ, not_in_at);
         } else {
             assert(strlen(input) == k);
             if (_strcmp(input, ref_word) == 0) {
                 printf("ok\n");
-                reset(dictionary.root);
+                if (dictionary.root != dictionary.nil)
+                    reset(dictionary.root);
                 return;
             } else if (is_present(dictionary.root, input)) {
                 int _min_occ[ALPHABET_LENGTH] = {0};
@@ -632,9 +632,9 @@ void nuova_partita() {
         }
     }
     printf("ko\n");
-    reset(dictionary.root);
+    if (dictionary.root != dictionary.nil)
+        reset(dictionary.root);
 }
-
 
 void free_tree() {
     for (int i = 0; i < num_el_to_free; i++) {
@@ -682,8 +682,8 @@ int main() {
             }
         }
         free_tree();
-        free(dictionary.nil);
         free(to_free_list);
     }
+    free(dictionary.nil);
     return 0;
 }
